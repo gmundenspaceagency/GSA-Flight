@@ -75,7 +75,6 @@ except KeyboardInterrupt:
         
     sys.exit()
 
-
 try:
     pi_state = 'ready'
     print('Pi is ready, hold start button to start program')
