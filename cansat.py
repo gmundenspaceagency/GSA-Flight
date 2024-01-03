@@ -2,11 +2,15 @@ import time
 from time import sleep
 import datetime
 from threading import Thread
-from smbus import SMBus
 from gpiozero import LED, Button
 from bh1750 import BH1750
 import Adafruit_ADS1x15
 from bme import BME
+from servo import SERVO
+from gyroscope import GYRO
+import RPi.GPIO as GPIO
+from typing import Optional
+from motor import MOTOR
 
 pi_state = 'initializing'
 print('Pi is initializing...')
@@ -16,7 +20,7 @@ blinking = False
 
 # initialize and test onboard led
 try:
-    onboard_led = LED(25)
+    onboard_led = LED(23)
 
     # controls blinking of pi led to indicate different states of pi
     def blink_onboard(timeout: float, state: str) -> None:
@@ -32,47 +36,132 @@ try:
         blinking = False
 
     # fast blinking to show pi is initializing
-    Thread(target=blink_onboard, args=(0.05, 'initialize')).start()
-
+    Thread(target=blink_onboard, args=(0.5, 'initializing')).start()
 except Exception as error:
     onboard_led = None
     print('Warning: Onboard LED could not be initialized: ' + str(error))
 
 # initialize sensors
-try:
-    # every sensor is in a try-block so the program will still work when one of the sensors fails on launch
+def initialize_light1()->Optional[BH1750]:
     try:
         light1 = BH1750()
         light1.luminance(BH1750.ONCE_HIRES_1)
     except Exception as error:
         light1 = None
-        print('Warning: Error while testing light sensor 1: ' + str(error))
+        print('Problem with light sensor 1: ' + str(error))
+    
+    return light1
 
-    power_button = Button(5, pull_up=True)
+def initialize_light2()->Optional[BH1750]:   
+    try:
+        GPIO.output(power_light2, 1)
+        GPIO.output(power_light3, 0)
+        
+        # wait until both pins have the desired states
+        while not GPIO.input(power_light2) or GPIO.input(power_light3):
+            pass
+        
+        light2 = BH1750(1, 0x5c)
+        light2.luminance(BH1750.ONCE_HIRES_1)
+    except Exception as error:
+        light2 = None
+        print('Problem with light sensor 2: ' + str(error))
+    
+    return light2
 
+def initialize_light3()->Optional[BH1750]:
+    try:
+        GPIO.output(power_light2, 0)
+        GPIO.output(power_light3, 1)
+        
+        # wait until both pins have the desired states
+        while GPIO.input(power_light2) or not GPIO.input(power_light3):
+            pass
+        
+        light3 = BH1750(1, 0x5c)
+        light3.luminance(BH1750.ONCE_HIRES_1)
+    except Exception as error:
+        light3 = None
+        print('Problem with light sensor 3: ' + str(error))
+    
+    return light3
+
+def initialize_adc()->Optional[Adafruit_ADS1x15.ADS1115]:
     try:
         adc = Adafruit_ADS1x15.ADS1115()
         adc.read_adc(1, gain=1)
-    
     except Exception as error:
         adc = None
-        print('Warning: Error while testing A/D-Converter: ' + str(error))
+        print('Problem with A/D-Converter: ' + str(error))
+    
+    return adc
 
+def initialize_bme()->Optional[BME]:
     try:
-        pth = BME()
-        pth.read_data()
+        bme = BME()
+        bme.read_data()
     except Exception as error:
-        pth = None
-        print('Warning: Error while testing PTH-Sensor: ' + str(error))
+        bme = None
+        print('Problem with BME-Sensor: ' + str(error))
+    
+    return bme
+ 
+def initialize_servo()->Optional[SERVO]:
+    try:
+        servo = SERVO()
+        servo.set_angle(0)
+    except Exception as error:
+        servo = None
+        print('Problem with servo: ' + str(error))
+    
+    return servo
 
+def initialize_gyro()->Optional[GYRO]:
+    try:
+        gyro = GYRO()
+        gyro.get_scaled_acceleration()
+    except Exception as error:
+        gyro = None
+        print('Problem with gyroscope: ' + str(error))
+    
+    return gyro
+
+def initialize_motor()->Optional[MOTOR]:
+    try:
+        motor = MOTOR(19, 26, 20, 21)
+        motor.set_angle(120)
+        sleep(0.5)
+        motor.set_angle(270)
+        sleep(0.5)
+        motor.set_angle(0)
+    except Exception as error:
+        motor = None
+        print('Problem with motor: ' + str(error))
+    
+    return motor
+        
+try:
+    GPIO.setmode(GPIO.BCM)
+    power_light2 = 17
+    power_light3 = 27
+    GPIO.setup(17, GPIO.OUT, initial=0)
+    GPIO.setup(27, GPIO.OUT, initial=0)
+    power_button = Button(22, pull_up=True)
+    
+    # every sensor is in a try-block so the program will still work when one of the sensors fails on launch
+    light1 = initialize_light1()
+    light2 = initialize_light2()
+    light3 = initialize_light3()
+    adc = initialize_adc()
+    bme = initialize_bme()
+    servo = initialize_servo()
+    gyro = initialize_gyro()
+    motor = initialize_motor()
 except KeyboardInterrupt:
     print('Initializing aborted by keyboard interrupt')
-
-    if onboard_led is not None:
-        onboard_led.off()
-
+    GPIO.cleanup()
     exit()
-"""
+
 try:
     pi_state = 'ready'
     print('Pi is ready, hold start button to start program')
@@ -105,20 +194,86 @@ try:
                     pass
 
                 Thread(target=blink_onboard, args=(0.5, 'ready')).start()
-
 except KeyboardInterrupt:
     print('Program stopped in ready state by keyboard interrupt')
-
-    if onboard_led is not None:
-        onboard_led.off()
-
+    GPIO.cleanup()
     exit()
-"""
-def main() -> None:
-    global pi_state
+
+luminance1 = luminance2 = luminance3 = None
+
+def rotation_mechanism() -> None:
+    global luminance1, luminance2, luminance3
+    
+    while pi_state == 'running' or pi_state == 'shutting down':
+        try:
+            GPIO.setmode(GPIO.BCM)
+            power_light2 = 17
+            power_light3 = 27
+            GPIO.setup(17, GPIO.OUT, initial=0)
+            GPIO.setup(27, GPIO.OUT, initial=0)
+            GPIO.output(power_light2, 1)
+            GPIO.output(power_light3, 0)
+                
+            try:
+                luminance1 = round(light1.luminance(BH1750.ONCE_HIRES_1), 4)
+            except Exception as error:
+                # try to contact sensor again
+                light1 = initialize_light1()
+
+            try: 
+                # wait until both pins have the desired states
+                while not GPIO.input(power_light2) or GPIO.input(power_light3):
+                    pass
+                
+                luminance2 = round(light2.luminance(BH1750.ONCE_HIRES_1), 4)
+            except Exception as error:
+                # try to contact sensor again
+                light2 = initialize_light2()
+
+            try:
+                GPIO.output(power_light2, 0)
+                GPIO.output(power_light3, 1)
+                
+                # wait until both pins have the desired states
+                while GPIO.input(power_light2) or not GPIO.input(power_light3):
+                    pass
+                
+                luminance3 = round(light3.luminance(BH1750.ONCE_HIRES_1), 4)
+            except Exception as error:
+                # try to contact sensor again
+                light3 = initialize_light3()
+            
+            if luminance1 is not None and luminance2 is not None and luminance3 is not None:
+                luminance_angles = [(luminance1, 0), (luminance2, 120), (luminance3, 240)]
+                las = sorted(luminance_angles, key=lambda x: x[0], reverse=True)
+                difference = las[1][1] - las[0][1]
+                
+                # TODO: das geht save einfacher (ChatGPT?) und das Problem dass die hälfte von 0 und 240 120 ist und nicht 300
+                if difference > 180:
+                    difference = 360 - difference
+                if difference < -180:
+                    difference = 360 + difference
+                
+                goal_angle = round(las[0][1] + min(las[0][0], las[1][0]) / max(las[0][0], las[1][0], 1) * difference)
+                
+                if goal_angle > 360:
+                    goal_angle -= 360
+                if goal_angle < 0:
+                    goal_angle += 360
+                
+                print(las)
+                print(goal_angle)
+                motor.set_angle(goal_angle)
+        except KeyboardInterrupt as error:
+            print('Error in rotation mechanism: ' + str(error))
+
+def main()->None:
+    global pi_state, adc, bme, servo, gyro
 
     start_time = datetime.datetime.now()
-    start_perf = time.perf_counter() * 1000
+    start_perf = round(time.perf_counter() * 1000)
+    # TODO: realistische iteration time
+    max_iteration_time = 2000
     timestamps = []
     pressures = []
     temperatures = []
@@ -126,26 +281,39 @@ def main() -> None:
     altitudes = []
     vertical_speeds = []
     vertical_accelerations = []
+    rotationrates = []
+    gyro_accelerations = []
+    rotationangles = []
     
-    # TODO: zu allen sensor readings ein except hinzufügen falls was ausfällt
+    Thread(target=rotation_mechanism, args=()).start()
+    sleep(1)
+    
+    # TODO: vor dem flug die onboard led sicher machen (falls verbindung weg) oder ganz removen
     while True:
-        timestamp = time.perf_counter() * 1000 - start_perf
+        timestamp = round(time.perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
 
         if onboard_led is not None:
             onboard_led.off()
+        
+        if len(timestamps) > 1:
+            time_difference = timestamp - timestamps[-2]
+            
+            if time_difference > max_iteration_time:
+                print(f'Warning: Single iteration took more than {max_iteration_time}ms (took {time_difference}ms)')
 
-        if light1 is not None:
-            luminance1 = round(light1.luminance(BH1750.ONCE_HIRES_1), 4)
-            print(f'Luminance at Sensor 1: {luminance1}lux')
+        print(f'Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}')
 
-        if adc is not None:
+        try:
             adc_value = adc.read_adc(1, gain=1)
             solar_voltage = round(4.096 / 32767 * adc_value, 3)
             print(f'Solar panel voltage: {solar_voltage}V')
-
-        if pth is not None:
-            data = pth.read_data()
+        except Exception as error:
+            # try to contact sensor again
+            adc = initialize_adc()
+        
+        try:
+            data = bme.read_data()
             pressure = round(float(data.pressure), 2)
             pressures.append(pressure)
             temperature = round(float(data.temperature), 2)
@@ -159,15 +327,9 @@ def main() -> None:
 
             # speed can only be calculated after 2 height measures
             if len(timestamps) > 1:
-                time_difference = timestamp - timestamps[-2]
                 avg_over = 5
 
-                avg_vertical_speed = round(sum([
-                    (alt - altitudes[i - 1]) / (timestamps[i] - timestamps[i - 1]) * 1000
-                    for i, alt
-                    in enumerate(altitudes[max(-len(timestamps) + 1, -avg_over - 1):-1])
-                ]) / min(len(timestamps), avg_over), 2)
-
+                avg_vertical_speed = round(sum(vertical_speeds[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
                 vertical_speed = round((altitude - altitudes[-2]) / time_difference * 1000, 2)
                 vertical_speeds.append(vertical_speed)
 
@@ -175,24 +337,44 @@ def main() -> None:
 
             # acceleration can only be calculated after 3 height measures
             if len(timestamps) > 2:
-                avg_vertical_acceleration = round(sum([
-                    speed - vertical_speeds[i - 1]
-                    for i, speed
-                    in enumerate(vertical_speeds[max(-len(timestamps) + 2, -avg_over - 1):-1])
-                ]) / min(len(timestamps), avg_over), 3)
+                avg_vertical_acceleration = round(sum(vertical_accelerations[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
 
                 vertical_acceleration = round((vertical_speed - vertical_speeds[-2]) / time_difference, 3)
                 vertical_accelerations.append(vertical_acceleration)
 
                 print(f'Acceleration: {vertical_acceleration}m/s^2, Average acceleration: {avg_vertical_acceleration}m/s^2')
-
+        except Exception as error:
+            # try to contact sensor again
+            bme = initialize_bme()
+    
+        try:
+            gyro_data = gyro.get_scaled_gyroscope()
+            rotationrates.append(gyro_data)
+            rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
+            acceleration = gyro.get_scaled_acceleration()
+            gyro_accelerations.append(acceleration)
+            acceleration_x, acceleration_y, acceleration_z = acceleration
+            rotation = gyro.get_rotation(*acceleration)
+            rotationangles.append(rotation)
+            rotation_x, rotation_y = rotation
+            
+            print(f'Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z')
+            print(f'Acceleration (g): {acceleration_x}x {acceleration_y}y {acceleration_z}z')
+            print(f'Angle of rotation (°): {rotation_x}x {rotation_y}y')
+        except Exception as error:
+            # try to contact sensor again
+            gyro = initialize_gyro()
+            
         if onboard_led is not None:
             onboard_led.on()
 
         # check for turn off
         if power_button.is_pressed:
             pi_state = 'shutting down'
-
+            
+            while blinking:
+                pass
+            
             # fast flashing telling pi is about to shut down
             Thread(target=blink_onboard, args=(0.05, 'shutting down')).start()
             sleep(1)
@@ -208,7 +390,7 @@ def main() -> None:
                 pi_state = 'running'
 
                 while blinking:
-                    pass
+                    pass 
 
                 if onboard_led is not None:
                     onboard_led.on()
@@ -230,6 +412,8 @@ try:
         pass
 
     main()
+    while True:
+        sleep(100)
 
 except KeyboardInterrupt:
     print('Running program stopped by keyboard interrupt')
@@ -238,9 +422,9 @@ except KeyboardInterrupt:
         onboard_led.off()
 
 finally:
+    if motor is not None:
+        motor.set_angle(0)
+    
+    GPIO.cleanup()
     pi_state = 'off'
-
-    if onboard_led is not None:
-        onboard_led.off()
-
     print('bye bye')
