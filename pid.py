@@ -19,14 +19,21 @@ class CircularPIDController:
         output = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
         self.prev_error = error
         return output
-pidController = CircularPIDController(0.7,0,0,360)
+pidController = CircularPIDController(0.7,0.3,0.15,360)
 i= 0
-currentAngle=180
-listOfCurrentAngles=[180]
+currentAngle=0
+listOfCurrentAngles=[0,]
+targetAngle=90
+listOfTargetAngles=[targetAngle]
 while i < 10:
-    calculatedAngle = pidController.calculate(0, currentAngle)
+    calculatedAngle = pidController.calculate(targetAngle, currentAngle)
     currentAngle = currentAngle+calculatedAngle
-    listOfCurrentAngles = listOfCurrentAngles + currentAngle
+    listOfCurrentAngles.append(currentAngle)
+    targetAngle=targetAngle-3
+    listOfTargetAngles.append(targetAngle)
     i=i+1
     
 print(listOfCurrentAngles)
+plt.plot(listOfCurrentAngles)
+plt.plot(listOfTargetAngles)
+plt.show()
