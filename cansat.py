@@ -13,6 +13,7 @@ from typing import Optional
 from motor import MOTOR
 from rak4200 import RAK4200
 
+cansat_id = '69xd'
 pi_state = 'initializing'
 print('Pi is initializing...')
 
