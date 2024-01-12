@@ -44,7 +44,12 @@ class MOTOR:
         GPIO.cleanup()
 
     def move_steps(self, steps):
+        self.moving = True
         for i in range(steps):
+            
+            if not self.moving:
+                break
+            
             for pin in range(0, len(self.motor_pins)):
                 GPIO.output(self.motor_pins[pin], self.step_sequence[self.motor_step_counter][pin])
             if self.direction:

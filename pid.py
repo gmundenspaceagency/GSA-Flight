@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 
 class CircularPIDController:
     def __init__(self, Kp, Ki, Kd, angle_range):
@@ -13,6 +15,18 @@ class CircularPIDController:
         self.integral += error
 
         derivative = error - self.prev_error
+        print(error,"error")
         output = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
         self.prev_error = error
         return output
+pidController = CircularPIDController(0.7,0,0,360)
+i= 0
+currentAngle=180
+listOfCurrentAngles=[180]
+while i < 10:
+    calculatedAngle = pidController.calculate(0, currentAngle)
+    currentAngle = currentAngle+calculatedAngle
+    listOfCurrentAngles = listOfCurrentAngles + currentAngle
+    i=i+1
+    
+print(listOfCurrentAngles)

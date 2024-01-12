@@ -11,6 +11,7 @@ from gyroscope import GYRO
 import RPi.GPIO as GPIO
 from typing import Optional
 from motor import MOTOR
+from rak4200 import RAK4200
 
 pi_state = 'initializing'
 print('Pi is initializing...')
@@ -129,16 +130,30 @@ def initialize_gyro()->Optional[GYRO]:
 def initialize_motor()->Optional[MOTOR]:
     try:
         motor = MOTOR(19, 26, 20, 21)
-        motor.set_angle(120)
-        sleep(0.5)
-        motor.set_angle(270)
-        sleep(0.5)
-        motor.set_angle(0)
+        motor.move_angle(120)
+        # sleep(0.5)
+        # motor.set_angle(270)
+        # sleep(0.5)
+        # motor.set_angle(0)
     except Exception as error:
         motor = None
         print('Problem with motor: ' + str(error))
     
     return motor
+
+"""
+Günther is the TRANSCEIVER!!!
+"""
+
+def initialize_guenther()->Optional[RAK4200]:
+    try:
+        guenther = RAK4200()
+        guenther.start()
+    except Exception as error:
+        guenther = None
+        print('Problem with guenther: ' + str(error))
+    
+    return guenther
         
 try:
     GPIO.setmode(GPIO.BCM)
@@ -157,11 +172,12 @@ try:
     servo = initialize_servo()
     gyro = initialize_gyro()
     motor = initialize_motor()
+    guenther = initialize_guenther()
 except KeyboardInterrupt:
     print('Initializing aborted by keyboard interrupt')
     GPIO.cleanup()
     exit()
-
+"""
 try:
     pi_state = 'ready'
     print('Pi is ready, hold start button to start program')
@@ -198,7 +214,7 @@ except KeyboardInterrupt:
     print('Program stopped in ready state by keyboard interrupt')
     GPIO.cleanup()
     exit()
-
+"""
 luminance1 = luminance2 = luminance3 = None
 
 def rotation_mechanism() -> None:
@@ -244,25 +260,18 @@ def rotation_mechanism() -> None:
                 light3 = initialize_light3()
             
             if luminance1 is not None and luminance2 is not None and luminance3 is not None:
-                luminance_angles = [(luminance1, 0), (luminance2, 120), (luminance3, 240)]
-                las = sorted(luminance_angles, key=lambda x: x[0], reverse=True)
-                difference = las[1][1] - las[0][1]
+                luminances = [luminance1, luminance2, luminance3]
+                angle_fraction = 360 / len(luminances)
+                highest = max(luminances)
+                index = luminances.index(highest)
+                right = luminances[index + 1] if index + 1 < len(luminances) else luminances[0]
+                left = luminances[index - 1] if index > 0 else luminances[-1]
                 
-                # TODO: das geht save einfacher (ChatGPT?) und das Problem dass die hälfte von 0 und 240 120 ist und nicht 300
-                if difference > 180:
-                    difference = 360 - difference
-                if difference < -180:
-                    difference = 360 + difference
+                if right > left:
+                    goal_angle = round(index / len(luminances) * (360 - angle_fraction) + angle_fraction * right / max(highest, 1))
+                else:
+                    goal_angle = round(index / len(luminances) * (360 - angle_fraction) - angle_fraction * left / max(highest, 1))
                 
-                goal_angle = round(las[0][1] + min(las[0][0], las[1][0]) / max(las[0][0], las[1][0], 1) * difference)
-                
-                if goal_angle > 360:
-                    goal_angle -= 360
-                if goal_angle < 0:
-                    goal_angle += 360
-                
-                print(las)
-                print(goal_angle)
                 motor.set_angle(goal_angle)
         except KeyboardInterrupt as error:
             print('Error in rotation mechanism: ' + str(error))
@@ -359,12 +368,18 @@ def main()->None:
             rotation_x, rotation_y = rotation
             
             print(f'Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z')
-            print(f'Acceleration (g): {acceleration_x}x {acceleration_y}y {acceleration_z}z')
+            print(f'Static Acceleration (g): {acceleration_x}x {acceleration_y}y {acceleration_z}z')
             print(f'Angle of rotation (°): {rotation_x}x {rotation_y}y')
         except Exception as error:
             # try to contact sensor again
             gyro = initialize_gyro()
-            
+        
+        try:
+            guenther.send('SIEGGGGG')
+        except Exception as error:
+            # try to contact transceiver again
+            guenther = initialize_guenther()
+        
         if onboard_led is not None:
             onboard_led.on()
 

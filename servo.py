@@ -15,3 +15,4 @@ class SERVO:
         self.angle = angle
         sleep(1)
         self.pin.stop()
+
