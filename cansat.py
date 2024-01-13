@@ -108,16 +108,6 @@ def initialize_bme()->Optional[BME]:
     
     return bme
  
-def initialize_servo()->Optional[SERVO]:
-    try:
-        servo = SERVO()
-        servo.set_angle(0)
-    except Exception as error:
-        servo = None
-        print('Problem with servo: ' + str(error))
-    
-    return servo
-
 def initialize_gyro()->Optional[GYRO]:
     try:
         gyro = GYRO()
@@ -170,7 +160,6 @@ try:
     light3 = initialize_light3()
     adc = initialize_adc()
     bme = initialize_bme()
-    servo = initialize_servo()
     gyro = initialize_gyro()
     motor = initialize_motor()
     guenther = initialize_guenther()
@@ -278,7 +267,7 @@ def rotation_mechanism() -> None:
             print('Error in rotation mechanism: ' + str(error))
 
 def main()->None:
-    global pi_state, adc, bme, servo, gyro
+    global pi_state, adc, bme, gyro, guenther
 
     start_time = datetime.datetime.now()
     start_perf = round(time.perf_counter() * 1000)
@@ -321,6 +310,10 @@ def main()->None:
         except Exception as error:
             # try to contact sensor again
             adc = initialize_adc()
+        
+        # X means they were not set yet
+        pressure = 'X'
+        temperature = 'X'
         
         try:
             data = bme.read_data()
@@ -376,7 +369,7 @@ def main()->None:
             gyro = initialize_gyro()
         
         try:
-            guenther.send('SIEGGGGG')
+            guenther.send(f'{cansat_id}-{timestamp}-{pressure}-{temperature}')
         except Exception as error:
             # try to contact transceiver again
             guenther = initialize_guenther()
