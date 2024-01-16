@@ -369,7 +369,7 @@ def main()->None:
             gyro = initialize_gyro()
         
         try:
-            guenther.send(f'{cansat_id}-{timestamp}-{pressure}-{temperature}')
+            guenther.send(f'{cansat_id}-{timestamp}-{rotation_x}-{rotation_y}')
         except Exception as error:
             # try to contact transceiver again
             guenther = initialize_guenther()

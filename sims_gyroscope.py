@@ -4,15 +4,17 @@ import time
 # Replace '0x68' with the correct I2C address if needed
 sensor = mpu6050(0x68)
 
-def get_z_rotation():
-    gyro_data = sensor.get_gyro_data()
-    z_rotation = gyro_data['z']
-    return z_rotation
-
 try:
+    rotation = 0
     while True:
-        z_rotation = get_z_rotation()
-        print(f"Z Rotation: {z_rotation} degrees")
+        fixed_average_sensor_drift = 0.86
+        rotation += (sensor.get_gyro_data()['z'] - fixed_average_sensor_drift) / 10
+        print(round(rotation))
         time.sleep(0.1)
+        # s = 0
+        # for i in range(0, 10000):
+            # s += sensor.get_gyro_data()['z']
+        # print(s / 1000)
+        #print(rotation)
 except KeyboardInterrupt:
     print("Program terminated by user.")
