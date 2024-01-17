@@ -28,9 +28,9 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="2.8578564"
-     inkscape:cx="138.91531"
-     inkscape:cy="445.08884"
+     inkscape:zoom="2.0208096"
+     inkscape:cx="204.86838"
+     inkscape:cy="180.12582"
      inkscape:window-width="1920"
      inkscape:window-height="974"
      inkscape:window-x="-11"
@@ -1419,5 +1419,64 @@
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.41111px;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.264583"
          x="90.503647"
          y="45.079945">Status-LED</tspan></text>
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.153263;stroke-opacity:1"
+       id="rect83362"
+       width="1.6724731"
+       height="6.8296623"
+       x="142.94685"
+       y="76.706566" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.0869228;stroke-dasharray:none;stroke-opacity:1"
+       id="rect83364"
+       width="6.5868983"
+       height="6.7622294"
+       x="-148.17088"
+       y="76.549919"
+       transform="scale(-1,1)" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.41111px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.264583"
+       x="142.2728"
+       y="79.570915"
+       id="text83368"><tspan
+         sodipodi:role="line"
+         id="tspan83366"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.41111px;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.264583"
+         x="142.2728"
+         y="79.570915">Camera</tspan></text>
+    <ellipse
+       style="fill:none;stroke:#000000;stroke-width:0.2;stroke-dasharray:none"
+       id="path83588"
+       cx="146.00026"
+       cy="81.877243"
+       rx="1.3092936"
+       ry="0.72011149" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.114821;stroke-dasharray:none;stroke-opacity:1"
+       id="rect84172"
+       width="1.0658292"
+       height="7.9675355"
+       x="136.34413"
+       y="75.874229" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.41111px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.264583"
+       x="-82.610733"
+       y="134.57805"
+       id="text84176"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan84174"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.41111px;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.264583"
+         x="-82.610733"
+         y="134.57805">CAMERA</tspan></text>
+    <rect
+       style="fill:#959595;fill-opacity:1;stroke:none;stroke-width:0.482535;stroke-dasharray:none;stroke-opacity:1"
+       id="rect84178"
+       width="5.368104"
+       height="4.5170636"
+       x="136.69026"
+       y="77.62989" />
   </g>
 </svg>
