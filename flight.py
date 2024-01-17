@@ -172,8 +172,8 @@ try:
         encoder = H264Encoder(bitrate=1000000)
         output = '/home/gsa202324/Desktop/test.h264'
     except Exception as error:
-        
-    
+     
+           
 except KeyboardInterrupt:
     print('Initializing aborted by keyboard interrupt')
     GPIO.cleanup()
