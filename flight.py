@@ -6,12 +6,13 @@ from gpiozero import LED, Button
 from bh1750 import BH1750
 import Adafruit_ADS1x15
 from bme import BME
-from servo import SERVO
 from gyroscope import GYRO
 import RPi.GPIO as GPIO
 from typing import Optional
 from motor import MOTOR
 from rak4200 import RAK4200
+from picamera2.encoders import H264Encoder
+from picamera2 import Picamera2, Preview
 
 cansat_id = '69xd'
 pi_state = 'initializing'
@@ -163,6 +164,16 @@ try:
     gyro = initialize_gyro()
     motor = initialize_motor()
     guenther = initialize_guenther()
+    
+    try:
+        picam2 = Picamera2()
+        video_config = picam2.create_video_configuration(main={"size": (1920, 1080)})
+        picam2.configure(video_config)
+        encoder = H264Encoder(bitrate=1000000)
+        output = '/home/gsa202324/Desktop/test.h264'
+    except Exception as error:
+        
+    
 except KeyboardInterrupt:
     print('Initializing aborted by keyboard interrupt')
     GPIO.cleanup()
@@ -421,8 +432,6 @@ try:
         pass
 
     main()
-    while True:
-        sleep(100)
 
 except KeyboardInterrupt:
     print('Running program stopped by keyboard interrupt')
@@ -436,4 +445,7 @@ finally:
     
     GPIO.cleanup()
     pi_state = 'off'
+    currentTime = datetime.now()
+    currentTimeStr = currentTime.strftime("%H:%M:%S")
+    guenther.send('(Info) CanSat program finished at: ' + currentTimeStr) 
     print('bye bye')
