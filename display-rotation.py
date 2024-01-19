@@ -1,8 +1,11 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
+from gyroscope import GYRO
 import numpy as np
 import math
+
+gyro = GYRO()
 
 def rotation_matrix(axis, theta):
     axis = np.asarray(axis)
@@ -29,14 +32,15 @@ rotation_x = rotation_y = 0
 
 def rotation():
     global rotation_x, rotation_y
+    acceleration = gyro.get_scaled_acceleration()
+    rotation = gyro.get_rotation(*acceleration)
+    rotation_x = rotation[0]
+    rotation_y = rotation[1]
 
-    rotation_x += 5
-    rotation_y += 0
-
-    if (rotation_x > 360): rotation_x -= 360
-    if (rotation_x < 0): rotation_x += 360
-    if (rotation_y > 360): rotation_y -= 360
-    if (rotation_y < 0): rotation_y += 360
+    if (rotation_x > 180): rotation_x -= 180
+    if (rotation_x < -180): rotation_x += 180
+    if (rotation_y > 180): rotation_y -= 180
+    if (rotation_y < -180): rotation_y += 180
 
     if (rotation_x == 90): rotation_x = 91
     if (rotation_x == 270): rotation_x = 271
@@ -89,7 +93,7 @@ fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
 # Use FuncAnimation to update the plot at regular intervals
-ani = FuncAnimation(fig, update_rotation, interval=100)
+ani = FuncAnimation(fig, update_rotation, interval=500)
 
 # Show the plot
 plt.show()

@@ -62,14 +62,18 @@ def main()->None:
     button2 = Pin(27, Pin.IN, Pin.PULL_UP)
     button3 = Pin(28, Pin.IN, Pin.PULL_UP)
     
-    for i in range(0, 5):
+    for i in range(7, 12):
         pins.append(Pin(i, Pin.OUT))
     
     try:
         while True:
             if button1.value() == 0: rain(pins, 0.1, 1)
-            bounce(pins, 0.05, 1)
-            if button3.value() == 0: blink(pins, 0., 1)
+            turn_on(pins)
+            time.sleep(1)
+            bounce(pins, 0.05, 10)
+            rain(pins, 0.05, 10)
+            blink(pins, 0.05, 10)
+            if button3.value() == 0: blink(pins, 0.1, 1)
     finally:
         turn_off(pins)
 

@@ -24,7 +24,7 @@ class RAK4200:
         currentTime = datetime.now()
         currentTimeStr = currentTime.strftime("%H:%M:%S")
         
-        self.send('(Info) RAK4200 is ready at: ' + currentTimeStr
+        self.send('(Info) RAK4200 is ready at: ' + currentTimeStr)
     
     def send(self:any, data:str)->None:
         self.uart0.write(("at+send=lorap2p:" + data.encode('utf-8').hex() + "\r\n").encode())
