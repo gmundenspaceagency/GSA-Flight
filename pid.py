@@ -1,4 +1,3 @@
-from motor import MOTOR
 
 class CircularPIDController:
     def __init__(self, Kp, Ki, Kd, angle_range):
