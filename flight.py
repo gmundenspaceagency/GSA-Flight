@@ -32,6 +32,7 @@ Allgemeine ToDos:
     - In einer JSON Datei allen unseren Fehlern error codes zuordnen (eg. 01 -> Fehler mit Lichtsensor1, 08 -> Fehler mit bme280280)
         - In einem Array aktuell aktive Fehler speichern und dieses Array wenn möglich zur Bodenstation schicken
 - Bodenstation und Transceiver
+    - Nur jedes zweite Datenpaket kommt bei der Bodenstation an
     - Klasse von Transceiver ausbauen (error handling, bandwith and frequency setting, reset transceiver if not working)
     - Diese Klasse auch in der Bodenstation verwenden
     - Empfangene Daten in einem bodenstation-log.json speichern
@@ -249,39 +250,20 @@ def rotation_mechanism() -> None:
     global luminance1, luminance2, luminance3
     
     while pi_state == 'running' or pi_state == 'shutting down':
-        try:
-            GPIO.setmode(GPIO.BCM)
-            power_light2 = 17
-            power_light3 = 27
-            GPIO.setup(17, GPIO.OUT, initial=0)
-            GPIO.setup(27, GPIO.OUT, initial=0)
-            GPIO.output(power_light2, 1)
-            GPIO.output(power_light3, 0)
-                
+        try:  
             try:
                 luminance1 = round(light1.luminance(Bh1750.ONCE_HIRES_1), 4)
             except Exception as error:
                 # try to contact sensor again
                 light1 = initialize_light1()
 
-            try: 
-                # wait until both pins have the desired states
-                while not GPIO.input(power_light2) or GPIO.input(power_light3):
-                    pass
-                
+            try:
                 luminance2 = round(light2.luminance(Bh1750.ONCE_HIRES_1), 4)
             except Exception as error:
                 # try to contact sensor again
                 light2 = initialize_light2()
-
+                
             try:
-                GPIO.output(power_light2, 0)
-                GPIO.output(power_light3, 1)
-                
-                # wait until both pins have the desired states
-                while GPIO.input(power_light2) or not GPIO.input(power_light3):
-                    pass
-                
                 luminance3 = round(light3.luminance(Bh1750.ONCE_HIRES_1), 4)
             except Exception as error:
                 # try to contact sensor again
@@ -301,7 +283,7 @@ def rotation_mechanism() -> None:
                     goal_angle = round(index / len(luminances) * (360 - angle_fraction) - angle_fraction * left / max(highest, 1))
                 
                 motor.set_angle(goal_angle)
-        except KeyboardInterrupt as error:
+        except Exception as error:
             print('Error in rotation mechanism: ' + str(error))
 
 def main()->None:
