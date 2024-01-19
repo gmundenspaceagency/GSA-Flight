@@ -1,5 +1,4 @@
-import matplotlib.pyplot as plt
-
+from motor import MOTOR
 
 class CircularPIDController:
     def __init__(self, Kp, Ki, Kd, angle_range):
@@ -34,6 +33,4 @@ while i < 10:
     i=i+1
     
 print(listOfCurrentAngles)
-plt.plot(listOfCurrentAngles)
-plt.plot(listOfTargetAngles)
-plt.show()
+
