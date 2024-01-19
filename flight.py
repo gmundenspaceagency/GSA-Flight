@@ -14,6 +14,29 @@ from rak4200 import RAK4200
 from picamera2.encoders import H264Encoder
 from picamera2 import Picamera2, Preview
 
+"""
+Allgemeine ToDos:
+
+- GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
+    - GPS Höhendaten mit dem BME280 Daten abgleichen
+- Temperaturdaten von GYRO und BME280 abgleichen
+- Kameraaufnahmen machen
+- Detailliertes Flight-Log erstellen (Flight_19d-10m-2024y_17h-35m-01s.json)
+    - Für jeden timestap ALLE DATEN die wir überhaupt nur bekommen können speichern
+- Error handling
+    - Wenn ein Error zum ersten Mal auftritt: speichern wann er aufgetreten ist, den Fehlertext (str(error)), und wenn er wieder weggeht speicher wann er weggegangen ist
+    - Trotzdem noch alle Fehler printen
+    - In einer JSON Datei allen unseren Fehlern error codes zuordnen (eg. 01 -> Fehler mit Lichtsensor1, 08 -> Fehler mit BME280)
+        - In einem Array aktuell aktive Fehler speichern und dieses Array wenn möglich zur Bodenstation schicken
+- Bodenstation und Transceiver
+    - Klasse von Transceiver ausbauen (error handling, bandwith and frequency setting, reset transceiver if not working)
+    - Diese Klasse auch in der Bodenstation verwenden
+    - Empfangene Daten in einem bodenstation-log.json speichern
+    - Kleine UI mit empfangenen Daten, mögliche Fehler Codes darstellen
+- Arbeit mit Daten nach Flug
+    - Wenn schon Flight-Log erstellt, probieren die Daten in coolen Diagrammen darzustellen
+"""
+
 cansat_id = '69xd'
 pi_state = 'initializing'
 print('Pi is initializing...')
