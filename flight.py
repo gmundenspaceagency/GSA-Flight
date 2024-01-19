@@ -1,33 +1,35 @@
 import time
-from time import sleep, perf_counter
 import datetime
+import RPi.GPIO as GPIO
+
+from typing import Optional
 from threading import Thread
 from gpiozero import LED, Button
-from gsa_components.bh1750 import BH1750
-import Adafruit_ADS1x15
-# python-bme280
+from time import sleep, perf_counter
+
+# pimoroni-bme280280-1.0.0
 from bme280 import BME280
-from gyroscope import GYRO
-import RPi.GPIO as GPIO
-from typing import Optional
-from motor import MOTOR
-from rak4200 import RAK4200
+from Adafruit_ADS1x15 import ADS1115
 from picamera2.encoders import H264Encoder
 from picamera2 import Picamera2, Preview
+from gsa_components.mpu6050 import Mpu6050
+from gsa_components.bh1750 import Bh1750
+from gsa_components.motor import Motor
+from gsa_components.rak4200 import Rak4200
 
 """
 Allgemeine ToDos:
 
 - GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
-    - GPS Höhendaten mit dem BME280 Daten abgleichen
-- Temperaturdaten von GYRO und BME280 abgleichen
+    - GPS Höhendaten mit dem bme280280 Daten abgleichen
+- Temperaturdaten von GYRO und bme280280 abgleichen
 - Kameraaufnahmen machen
 - Detailliertes Flight-Log erstellen (Flight_19d-10m-2024y_17h-35m-01s.json)
     - Für jeden timestap ALLE DATEN die wir überhaupt nur bekommen können speichern
 - Error handling
     - Wenn ein Error zum ersten Mal auftritt: speichern wann er aufgetreten ist, den Fehlertext (str(error)), und wenn er wieder weggeht speicher wann er weggegangen ist
     - Trotzdem noch alle Fehler printen
-    - In einer JSON Datei allen unseren Fehlern error codes zuordnen (eg. 01 -> Fehler mit Lichtsensor1, 08 -> Fehler mit BME280)
+    - In einer JSON Datei allen unseren Fehlern error codes zuordnen (eg. 01 -> Fehler mit Lichtsensor1, 08 -> Fehler mit bme280280)
         - In einem Array aktuell aktive Fehler speichern und dieses Array wenn möglich zur Bodenstation schicken
 - Bodenstation und Transceiver
     - Klasse von Transceiver ausbauen (error handling, bandwith and frequency setting, reset transceiver if not working)
@@ -70,17 +72,17 @@ except Exception as error:
     print('Warning: Onboard LED could not be initialized: ' + str(error))
 
 # initialize sensors
-def initialize_light1()->Optional[BH1750]:
+def initialize_light1()->Optional[Bh1750]:
     try:
-        light1 = BH1750()
-        light1.luminance(BH1750.ONCE_HIRES_1)
+        light1 = Bh1750()
+        light1.luminance(Bh1750.ONCE_HIRES_1)
     except Exception as error:
         light1 = None
         print('Problem with light sensor 1: ' + str(error))
     
     return light1
 
-def initialize_light2()->Optional[BH1750]:   
+def initialize_light2()->Optional[Bh1750]:   
     try:
         GPIO.output(power_light2, 1)
         GPIO.output(power_light3, 0)
@@ -89,15 +91,15 @@ def initialize_light2()->Optional[BH1750]:
         while not GPIO.input(power_light2) or GPIO.input(power_light3):
             pass
         
-        light2 = BH1750(1, 0x5c)
-        light2.luminance(BH1750.ONCE_HIRES_1)
+        light2 = Bh1750(1, 0x5c)
+        light2.luminance(Bh1750.ONCE_HIRES_1)
     except Exception as error:
         light2 = None
         print('Problem with light sensor 2: ' + str(error))
     
     return light2
 
-def initialize_light3()->Optional[BH1750]:
+def initialize_light3()->Optional[Bh1750]:
     try:
         GPIO.output(power_light2, 0)
         GPIO.output(power_light3, 1)
@@ -106,47 +108,47 @@ def initialize_light3()->Optional[BH1750]:
         while GPIO.input(power_light2) or not GPIO.input(power_light3):
             pass
         
-        light3 = BH1750(1, 0x5c)
-        light3.luminance(BH1750.ONCE_HIRES_1)
+        light3 = Bh1750(1, 0x5c)
+        light3.luminance(Bh1750.ONCE_HIRES_1)
     except Exception as error:
         light3 = None
         print('Problem with light sensor 3: ' + str(error))
     
     return light3
 
-def initialize_adc()->Optional[Adafruit_ADS1x15.ADS1115]:
+def initialize_ads1115()->Optional[ADS1115]:
     try:
-        adc = Adafruit_ADS1x15.ADS1115()
-        adc.read_adc(1, gain=1)
+        ads1115 = ADS1115()
+        ads1115.read_adc(1, gain=1)
     except Exception as error:
-        adc = None
+        ads1115 = None
         print('Problem with A/D-Converter: ' + str(error))
     
-    return adc
+    return ads1115
 
-def initialize_bme()->Optional[BME]:
+def initialize_bme280()->Optional[BME280]:
     try:
-        bme = BME()
-        bme.read_data()
+        bme280 = BME280()
+        bme280.get_temperature()
     except Exception as error:
-        bme = None
-        print('Problem with BME-Sensor: ' + str(error))
+        bme280 = None
+        print('Problem with BME280-Sensor: ' + str(error))
     
-    return bme
+    return bme280
  
-def initialize_gyro()->Optional[GYRO]:
+def initialize_mpu6050()->Optional[Mpu6050]:
     try:
-        gyro = GYRO()
-        gyro.get_scaled_acceleration()
+        mpu6050 = Mpu6050()
+        mpu6050.get_scaled_acceleration()
     except Exception as error:
-        gyro = None
-        print('Problem with gyroscope: ' + str(error))
+        mpu6050 = None
+        print('Problem with mpu6050scope: ' + str(error))
     
-    return gyro
+    return mpu6050
 
-def initialize_motor()->Optional[MOTOR]:
+def initialize_motor()->Optional[Motor]:
     try:
-        motor = MOTOR(19, 26, 20, 21)
+        motor = Motor(19, 26, 20, 21)
         motor.move_angle(120)
         # sleep(0.5)
         # motor.set_angle(270)
@@ -162,9 +164,9 @@ def initialize_motor()->Optional[MOTOR]:
 Günther is the TRANSCEIVER!!!
 """
 
-def initialize_guenther()->Optional[RAK4200]:
+def initialize_guenther()->Optional[Rak4200]:
     try:
-        guenther = RAK4200()
+        guenther = Rak4200()
         guenther.start()
     except Exception as error:
         guenther = None
@@ -184,9 +186,9 @@ try:
     light1 = initialize_light1()
     light2 = initialize_light2()
     light3 = initialize_light3()
-    adc = initialize_adc()
-    bme = initialize_bme()
-    gyro = initialize_gyro()
+    ads1115 = initialize_ads1115()
+    bme280 = initialize_bme280()
+    mpu6050 = initialize_mpu6050()
     motor = initialize_motor()
     guenther = initialize_guenther()
     
@@ -257,7 +259,7 @@ def rotation_mechanism() -> None:
             GPIO.output(power_light3, 0)
                 
             try:
-                luminance1 = round(light1.luminance(BH1750.ONCE_HIRES_1), 4)
+                luminance1 = round(light1.luminance(Bh1750.ONCE_HIRES_1), 4)
             except Exception as error:
                 # try to contact sensor again
                 light1 = initialize_light1()
@@ -267,7 +269,7 @@ def rotation_mechanism() -> None:
                 while not GPIO.input(power_light2) or GPIO.input(power_light3):
                     pass
                 
-                luminance2 = round(light2.luminance(BH1750.ONCE_HIRES_1), 4)
+                luminance2 = round(light2.luminance(Bh1750.ONCE_HIRES_1), 4)
             except Exception as error:
                 # try to contact sensor again
                 light2 = initialize_light2()
@@ -280,7 +282,7 @@ def rotation_mechanism() -> None:
                 while GPIO.input(power_light2) or not GPIO.input(power_light3):
                     pass
                 
-                luminance3 = round(light3.luminance(BH1750.ONCE_HIRES_1), 4)
+                luminance3 = round(light3.luminance(Bh1750.ONCE_HIRES_1), 4)
             except Exception as error:
                 # try to contact sensor again
                 light3 = initialize_light3()
@@ -303,7 +305,7 @@ def rotation_mechanism() -> None:
             print('Error in rotation mechanism: ' + str(error))
 
 def main()->None:
-    global pi_state, adc, bme, gyro, guenther
+    global pi_state, ads1115, bme280, mpu6050, guenther
 
     start_time = datetime.datetime.now()
     start_perf = round(perf_counter() * 1000)
@@ -317,7 +319,7 @@ def main()->None:
     vertical_speeds = []
     vertical_accelerations = []
     rotationrates = []
-    gyro_accelerations = []
+    mpu6050_accelerations = []
     rotationangles = []
     
     Thread(target=rotation_mechanism, args=()).start()
@@ -340,19 +342,19 @@ def main()->None:
         print(f'Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}')
 
         try:
-            adc_value = adc.read_adc(1, gain=1)
-            solar_voltage = round(4.096 / 32767 * adc_value, 3)
+            ads1115_value = ads1115.read_ads1115(1, gain=1)
+            solar_voltage = round(4.096 / 32767 * ads1115_value, 3)
             print(f'Solar panel voltage: {solar_voltage}V')
         except Exception as error:
             # try to contact sensor again
-            adc = initialize_adc()
+            ads1115 = initialize_ads1115()
         
         # X means they were not set yet
         pressure = 'X'
         temperature = 'X'
         
         try:
-            data = bme.read_data()
+            data = bme280.read_data()
             pressure = round(float(data.pressure), 2)
             pressures.append(pressure)
             temperature = round(float(data.temperature), 2)
@@ -384,16 +386,16 @@ def main()->None:
                 print(f'Acceleration: {vertical_acceleration}m/s^2, Average acceleration: {avg_vertical_acceleration}m/s^2')
         except Exception as error:
             # try to contact sensor again
-            bme = initialize_bme()
+            bme280 = initialize_bme280()
     
         try:
-            gyro_data = gyro.get_scaled_gyroscope()
+            gyro_data = mpu6050.get_scaled_gyroscope()
             rotationrates.append(gyro_data)
             rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
-            acceleration = gyro.get_scaled_acceleration()
-            gyro_accelerations.append(acceleration)
+            acceleration = mpu6050.get_scaled_acceleration()
+            mpu6050_accelerations.append(acceleration)
             acceleration_x, acceleration_y, acceleration_z = acceleration
-            rotation = gyro.get_rotation(*acceleration)
+            rotation = mpu6050.get_rotation(*acceleration)
             rotationangles.append(rotation)
             rotation_x, rotation_y = rotation
             
@@ -402,12 +404,13 @@ def main()->None:
             print(f'Angle of rotation (°): {rotation_x}x {rotation_y}y')
         except Exception as error:
             # try to contact sensor again
-            gyro = initialize_gyro()
+            mpu6050 = initialize_mpu6050()
         
         try:
-            guenther.send(f'{CANSAT_ID}-{timestamp}-{rotation_x}-{rotation_y}')
+            guenther.send(f'{CANSAT_ID};{timestamp};{rotation_x};{rotation_y}')
         except Exception as error:
             # try to contact transceiver again
+            print(str(error))
             guenther = initialize_guenther()
         
         if status_led is not None:

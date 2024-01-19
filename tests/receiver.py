@@ -1,4 +1,6 @@
-from rak4200 import RAK4200
+import sys
+sys.path.append('..')
+from gsa_components.rak4200 import Rak4200
 
-guenther = RAK4200(serial_port='/dev/ttyUSB0')
+guenther = Rak4200()
 guenther.start()

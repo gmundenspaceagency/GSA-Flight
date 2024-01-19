@@ -3,7 +3,7 @@ import time
 from datetime import datetime
 from typing import Optional
 
-class RAK4200:
+class Rak4200:
     def __init__(self:any, baudrate=115200, serial_port='/dev/ttyS0')->None:
         # Konfiguration des seriellen Ports
         self.baudrate = baudrate
@@ -28,3 +28,7 @@ class RAK4200:
     
     def send(self:any, data:str)->None:
         self.uart0.write(("at+send=lorap2p:" + data.encode('utf-8').hex() + "\r\n").encode())
+
+if __name__ == '__main__':
+    test = Rak4200()
+    test.start()
