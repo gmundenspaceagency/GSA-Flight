@@ -1,11 +1,12 @@
 import time
-from time import sleep
+from time import sleep, perf_counter
 import datetime
 from threading import Thread
 from gpiozero import LED, Button
-from bh1750 import BH1750
+from gsa_components.bh1750 import BH1750
 import Adafruit_ADS1x15
-from bme import BME
+# python-bme280
+from bme280 import BME280
 from gyroscope import GYRO
 import RPi.GPIO as GPIO
 from typing import Optional
@@ -35,9 +36,10 @@ Allgemeine ToDos:
     - Kleine UI mit empfangenen Daten, mögliche Fehler Codes darstellen
 - Arbeit mit Daten nach Flug
     - Wenn schon Flight-Log erstellt, probieren die Daten in coolen Diagrammen darzustellen
+- Script sofort nach Start von Pi ausführen
 """
 
-cansat_id = '69xd'
+CANSAT_ID = '69xd'
 pi_state = 'initializing'
 print('Pi is initializing...')
 
@@ -46,7 +48,7 @@ blinking = False
 
 # initialize and test onboard led
 try:
-    onboard_led = LED(23)
+    status_led = LED(23)
 
     # controls blinking of pi led to indicate different states of pi
     def blink_onboard(timeout: float, state: str) -> None:
@@ -54,17 +56,17 @@ try:
         blinking = True
 
         while pi_state == state:
-            onboard_led.on()
+            status_led.on()
             sleep(timeout)
-            onboard_led.off()
+            status_led.off()
             sleep(timeout)
 
         blinking = False
 
-    # fast blinking to show pi is initializing
+    # blinking to show pi is initializing
     Thread(target=blink_onboard, args=(0.5, 'initializing')).start()
 except Exception as error:
-    onboard_led = None
+    status_led = None
     print('Warning: Onboard LED could not be initialized: ' + str(error))
 
 # initialize sensors
@@ -304,7 +306,7 @@ def main()->None:
     global pi_state, adc, bme, gyro, guenther
 
     start_time = datetime.datetime.now()
-    start_perf = round(time.perf_counter() * 1000)
+    start_perf = round(perf_counter() * 1000)
     # TODO: realistische iteration time
     max_iteration_time = 2000
     timestamps = []
@@ -323,11 +325,11 @@ def main()->None:
     
     # TODO: vor dem flug die onboard led sicher machen (falls verbindung weg) oder ganz removen
     while True:
-        timestamp = round(time.perf_counter() * 1000 - start_perf)
+        timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
 
-        if onboard_led is not None:
-            onboard_led.off()
+        if status_led is not None:
+            status_led.off()
         
         if len(timestamps) > 1:
             time_difference = timestamp - timestamps[-2]
@@ -403,13 +405,13 @@ def main()->None:
             gyro = initialize_gyro()
         
         try:
-            guenther.send(f'{cansat_id}-{timestamp}-{rotation_x}-{rotation_y}')
+            guenther.send(f'{CANSAT_ID}-{timestamp}-{rotation_x}-{rotation_y}')
         except Exception as error:
             # try to contact transceiver again
             guenther = initialize_guenther()
         
-        if onboard_led is not None:
-            onboard_led.on()
+        if status_led is not None:
+            status_led.on()
 
         # check for turn off
         if power_button.is_pressed:
@@ -425,8 +427,8 @@ def main()->None:
             if power_button.is_pressed:
                 print('Program switched off with power button')
 
-                if onboard_led is not None:
-                    onboard_led.on()
+                if status_led is not None:
+                    status_led.on()
 
                 exit()
             else:
@@ -435,8 +437,8 @@ def main()->None:
                 while blinking:
                     pass 
 
-                if onboard_led is not None:
-                    onboard_led.on()
+                if status_led is not None:
+                    status_led.on()
 
         sleep(1)
 
@@ -447,8 +449,8 @@ try:
     while blinking:
         pass
 
-    if onboard_led is not None:
-        onboard_led.on()
+    if status_led is not None:
+        status_led.on()
 
     # wait until power button is let go
     while power_button.is_pressed:
@@ -459,8 +461,8 @@ try:
 except KeyboardInterrupt:
     print('Running program stopped by keyboard interrupt')
 
-    if onboard_led is not None:
-        onboard_led.off()
+    if status_led is not None:
+        status_led.off()
 
 finally:
     if motor is not None:

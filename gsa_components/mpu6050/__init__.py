@@ -1,8 +1,7 @@
 import smbus
 import math
-from time import sleep
 
-class GYRO:
+class Mpu6050:
     def __init__(self, bus_number: int = 1, address=0x68):
         # Register
         self.power_mgmt_1 = 0x6b

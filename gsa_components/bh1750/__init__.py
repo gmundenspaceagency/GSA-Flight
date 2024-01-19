@@ -2,7 +2,7 @@ import time
 from smbus2 import SMBus
 from time import sleep
 
-class BH1750:
+class Bh1750:
     """Standard Python BH1750 ambient light sensor driver."""
 
     PWR_OFF = 0x00

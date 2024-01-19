@@ -1,7 +1,7 @@
 import RPi.GPIO as GPIO
 from time import sleep
 
-class SERVO:
+class Servo:
     def __init__(self, pin_nr=24):
         self.pin_nr = pin_nr
         GPIO.setmode(GPIO.BCM)
@@ -15,4 +15,3 @@ class SERVO:
         self.angle = angle
         sleep(1)
         self.pin.stop()
-
