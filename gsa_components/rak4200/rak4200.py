@@ -32,3 +32,4 @@ class Rak4200:
 if __name__ == '__main__':
     test = Rak4200()
     test.start()
+    print('RAK4200 connected!')

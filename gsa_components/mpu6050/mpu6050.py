@@ -76,5 +76,5 @@ if __name__ == '__main__':
 
     while True:
         acceleration = mpu6050.get_scaled_acceleration()
-        print('Rotation: ' + mpu6050.get_rotation(*acceleration))
+        print('Rotation: ' + str(mpu6050.get_rotation(*acceleration)))
         time.sleep(1)
