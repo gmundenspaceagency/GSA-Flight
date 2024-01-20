@@ -1,1 +1,1 @@
-import bh1750
+from .bh1750 import Bh1750

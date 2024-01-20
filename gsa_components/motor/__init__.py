@@ -1,1 +1,1 @@
-import motor
+from .motor import Motor

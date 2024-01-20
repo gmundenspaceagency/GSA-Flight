@@ -1,1 +1,1 @@
-import servo
+from .servo import Servo

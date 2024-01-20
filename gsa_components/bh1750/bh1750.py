@@ -22,7 +22,7 @@ class Bh1750:
         self.addr = addr
         self.off()
         self.reset()
-
+    
     def off(self):
         """Turn sensor off."""
         self.set_mode(self.PWR_OFF)

@@ -12,8 +12,8 @@ from bme280 import BME280
 from Adafruit_ADS1x15 import ADS1115
 from picamera2.encoders import H264Encoder
 from picamera2 import Picamera2, Preview
-from gsa_components.mpu6050 import Mpu6050
-from gsa_components.bh1750 import Bh1750
+from gsa_components.mpu6050.mpu6050 import Mpu6050
+from gsa_components.bh1750.bh1750 import Bh1750
 from gsa_components.motor import Motor
 from gsa_components.rak4200 import Rak4200
 
