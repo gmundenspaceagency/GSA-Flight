@@ -57,7 +57,7 @@ if is_device_connected(device_path):
                         if not '(Info)' in message:
                             message_vals = message.split(';')
                             [cansat_id, timestamp, pressure, temperature] = message_vals
-                            print(f'CanSat-ID: {cansat_id}, Timestamp: {timestamp}, Rotation X: {pressure}°, Rotation Y: {temperature}°')
+                            print(f'CanSat-ID: {cansat_id}, Timestamp: {timestamp}, Pressure: {pressure}hPa, Temperature: {temperature}°C')
                         else:
                             print(message)
                 except Exception as error:
