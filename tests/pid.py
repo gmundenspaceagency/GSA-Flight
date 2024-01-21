@@ -1,3 +1,8 @@
+import sys
+sys.path.append('..')
+from gsa_components.motor import Motor
+from time import sleep
+import random
 
 class CircularPIDController:
     def __init__(self, Kp, Ki, Kd, angle_range):
@@ -13,23 +18,28 @@ class CircularPIDController:
         self.integral += error
 
         derivative = error - self.prev_error
-        print(error,"error")
         output = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
         self.prev_error = error
         return output
+"""
 pidController = CircularPIDController(0.7,0.3,0.15,360)
+motor = Motor(26,19,13,6,200,0.002)
 i= 0
 currentAngle=0
 listOfCurrentAngles=[0,]
 targetAngle=90
 listOfTargetAngles=[targetAngle]
-while i < 10:
+while i < 500:
     calculatedAngle = pidController.calculate(targetAngle, currentAngle)
-    currentAngle = currentAngle+calculatedAngle
-    listOfCurrentAngles.append(currentAngle)
-    targetAngle=targetAngle-3
+    if abs(calculatedAngle) > 1.8:
+        
+        motor.move_angle(calculatedAngle)
+        currentAngle = currentAngle+calculatedAngle
+        listOfCurrentAngles.append(currentAngle)
+    targetAngle=targetAngle+random.randint(-10,10)
     listOfTargetAngles.append(targetAngle)
     i=i+1
+    sleep(0.1)
     
 print(listOfCurrentAngles)
-
+"""

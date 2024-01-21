@@ -1,4 +1,5 @@
 import time
+import smbus
 import datetime
 import RPi.GPIO as GPIO
 
@@ -16,10 +17,12 @@ from gsa_components.mpu6050.mpu6050 import Mpu6050
 from gsa_components.bh1750.bh1750 import Bh1750
 from gsa_components.motor import Motor
 from gsa_components.rak4200 import Rak4200
+from tests import CircularPIDController
 
 """
 Allgemeine ToDos:
 
+- Multiplexer class
 - GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
     - GPS Höhendaten mit dem bme280280 Daten abgleichen
 - Temperaturdaten von GYRO und bme280280 abgleichen
@@ -43,6 +46,8 @@ Allgemeine ToDos:
 """
 
 CANSAT_ID = '69xd'
+BUS = smbus.SMBus(1)
+channel_array=[0b00000001,0b00000010,0b00000100,0b00001000,0b00010000,0b00100000,0b01000000,0b10000000]
 pi_state = 'initializing'
 print('Pi is initializing...')
 
@@ -76,46 +81,23 @@ except Exception as error:
 def initialize_light1()->Optional[Bh1750]:
     try:
         light1 = Bh1750()
-        light1.luminance(Bh1750.ONCE_HIRES_1)
+        light1.luminance(Bh1750.CONT_LOWRES)
     except Exception as error:
         light1 = None
         print('Problem with light sensor 1: ' + str(error))
     
     return light1
 
-def initialize_light2()->Optional[Bh1750]:   
+def initialize_light2n3()->Optional[Bh1750]:   
     try:
-        GPIO.output(power_light2, 1)
-        GPIO.output(power_light3, 0)
-        
-        # wait until both pins have the desired states
-        while not GPIO.input(power_light2) or GPIO.input(power_light3):
-            pass
-        
+        BUS.write_byte(0x70, channel_array[6])
         light2 = Bh1750(1, 0x5c)
-        light2.luminance(Bh1750.ONCE_HIRES_1)
+        light2.luminance(Bh1750.CONT_LOWRES)
     except Exception as error:
         light2 = None
         print('Problem with light sensor 2: ' + str(error))
     
     return light2
-
-def initialize_light3()->Optional[Bh1750]:
-    try:
-        GPIO.output(power_light2, 0)
-        GPIO.output(power_light3, 1)
-        
-        # wait until both pins have the desired states
-        while GPIO.input(power_light2) or not GPIO.input(power_light3):
-            pass
-        
-        light3 = Bh1750(1, 0x5c)
-        light3.luminance(Bh1750.ONCE_HIRES_1)
-    except Exception as error:
-        light3 = None
-        print('Problem with light sensor 3: ' + str(error))
-    
-    return light3
 
 def initialize_ads1115()->Optional[ADS1115]:
     try:
@@ -149,8 +131,7 @@ def initialize_mpu6050()->Optional[Mpu6050]:
 
 def initialize_motor()->Optional[Motor]:
     try:
-        motor = Motor(19, 26, 20, 21)
-        motor.move_angle(120)
+        motor = Motor(26,19,13,6,200,0.002)
         # sleep(0.5)
         # motor.set_angle(270)
         # sleep(0.5)
@@ -185,8 +166,7 @@ try:
     
     # every sensor is in a try-block so the program will still work when one of the sensors fails on launch
     light1 = initialize_light1()
-    light2 = initialize_light2()
-    light3 = initialize_light3()
+    light2n3 = initialize_light2n3()
     ads1115 = initialize_ads1115()
     bme280 = initialize_bme280()
     mpu6050 = initialize_mpu6050()
@@ -249,28 +229,32 @@ luminance1 = luminance2 = luminance3 = None
 def rotation_mechanism() -> None:
     global luminance1, luminance2, luminance3
     
-    while pi_state == 'running' or pi_state == 'shutting down':
+    current_angle = 0
+
+    while pi_state == 'running' or pi_state == 'shutting down':            
         try:  
             try:
-                luminance1 = round(light1.luminance(Bh1750.ONCE_HIRES_1), 4)
+                luminance1 = round(light1.luminance(Bh1750.CONT_LOWRES), 4)
             except Exception as error:
                 # try to contact sensor again
                 light1 = initialize_light1()
 
             try:
-                luminance2 = round(light2.luminance(Bh1750.ONCE_HIRES_1), 4)
+                BUS.write_byte(0x70, channel_array[7])
+                luminance2 = round(light2n3.luminance(Bh1750.CONT_LOWRES), 4)
             except Exception as error:
                 # try to contact sensor again
-                light2 = initialize_light2()
+                light2 = initialize_light2n3()
                 
             try:
-                luminance3 = round(light3.luminance(Bh1750.ONCE_HIRES_1), 4)
+                BUS.write_byte(0x70, channel_array[6])
+                luminance3 = round(light2n3.luminance(Bh1750.CONT_LOWRES), 4)
             except Exception as error:
                 # try to contact sensor again
-                light3 = initialize_light3()
+                light3 = initialize_light2n3()
             
             if luminance1 is not None and luminance2 is not None and luminance3 is not None:
-                luminances = [luminance1, luminance2, luminance3]
+                luminances = [luminance1, luminance3, luminance2]
                 angle_fraction = 360 / len(luminances)
                 highest = max(luminances)
                 index = luminances.index(highest)
@@ -278,12 +262,19 @@ def rotation_mechanism() -> None:
                 left = luminances[index - 1] if index > 0 else luminances[-1]
                 
                 if right > left:
-                    goal_angle = round(index / len(luminances) * (360 - angle_fraction) + angle_fraction * right / max(highest, 1))
+                    goal_angle = round(index / (len(luminances) - 1) * (360 - angle_fraction) + angle_fraction * right / max(highest, 1))
                 else:
-                    goal_angle = round(index / len(luminances) * (360 - angle_fraction) - angle_fraction * left / max(highest, 1))
+                    goal_angle = round(index / (len(luminances) - 1) * (360 - angle_fraction) - angle_fraction * left / max(highest, 1))
                 
-                motor.set_angle(goal_angle)
-        except Exception as error:
+                if goal_angle < 0:
+                    goal_angle += 360
+                
+                pidController = CircularPIDController(0.3,0,0,360)
+                calculatedAngle = pidController.calculate(goal_angle, current_angle)
+                if abs(calculatedAngle) > 1.8:
+                    motor.move_angle(calculatedAngle)
+                    current_angle += calculatedAngle
+        except ValueError as error:
             print('Error in rotation mechanism: ' + str(error))
 
 def main()->None:
@@ -305,7 +296,6 @@ def main()->None:
     rotationangles = []
     
     Thread(target=rotation_mechanism, args=()).start()
-    sleep(1)
     
     # TODO: vor dem flug die onboard led sicher machen (falls verbindung weg) oder ganz removen
     while True:
@@ -336,14 +326,14 @@ def main()->None:
         temperature = 'X'
         
         try:
-            data = bme280.read_data()
-            pressure = round(float(data.pressure), 2)
+            bme280.update_sensor()
+            pressure = round(float(bme280.pressure), 2)
             pressures.append(pressure)
-            temperature = round(float(data.temperature), 2)
+            temperature = round(float(bme280.temperature), 2)
             temperatures.append(temperature)
-            humidity = round(float(data.humidity) / 100, 2)
+            humidity = round(float(bme280.humidity) / 100, 2)
             humidities.append(humidity)
-            altitude = round(44331.5 - 4946.62 * (pressure * 100) ** 0.190263, 2)
+            altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
             altitudes.append(altitude)
 
             print(f'Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%')
@@ -389,7 +379,7 @@ def main()->None:
             mpu6050 = initialize_mpu6050()
         
         try:
-            guenther.send(f'{CANSAT_ID};{timestamp};{rotation_x};{rotation_y}')
+            guenther.send(f'{CANSAT_ID};{timestamp};{pressure};{temperature}')
         except Exception as error:
             # try to contact transceiver again
             print(str(error))
@@ -455,7 +445,7 @@ finally:
     
     GPIO.cleanup()
     pi_state = 'off'
-    currentTime = datetime.now()
+    currentTime = datetime.datetime.now()
     currentTimeStr = currentTime.strftime("%H:%M:%S")
     guenther.send('(Info) CanSat program finished at: ' + currentTimeStr) 
     print('bye bye')

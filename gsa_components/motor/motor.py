@@ -3,7 +3,7 @@ import RPi.GPIO as GPIO
 import time
 
 class Motor:
-    def __init__(self, in1, in2, in3, in4, step_count=4096, step_sleep=0.0008):
+    def __init__(self, in1, in2, in3, in4, step_count=200, step_sleep=0.02):
         self.in1 = in1
         self.in2 = in2
         self.in3 = in3
@@ -12,14 +12,10 @@ class Motor:
         self.step_sleep = step_sleep
         self.direction = True  # True for clockwise, False for counter-clockwise
         self.step_sequence = [
-            [1, 0, 0, 0],
-            [1, 1, 0, 0],
-            [0, 1, 0, 0],
+            [1, 0, 0, 1],
+            [0, 1, 0, 1],
             [0, 1, 1, 0],
-            [0, 0, 1, 0],
-            [0, 0, 1, 1],
-            [0, 0, 0, 1],
-            [1, 0, 0, 1]
+            [1, 0, 1, 0]
         ]
 
         GPIO.setmode(GPIO.BCM)
@@ -52,15 +48,21 @@ class Motor:
                 break
             
             for pin in range(0, len(self.motor_pins)):
+                # has to be set again here because of weird GPIO error in second thread please FIX
+                GPIO.setmode(GPIO.BCM)
+                GPIO.setup(self.in1, GPIO.OUT)
+                GPIO.setup(self.in2, GPIO.OUT)
+                GPIO.setup(self.in3, GPIO.OUT)
+                GPIO.setup(self.in4, GPIO.OUT)
                 GPIO.output(self.motor_pins[pin], self.step_sequence[self.motor_step_counter][pin])
             if self.direction:
-                self.motor_step_counter = (self.motor_step_counter - 1) % 8
+                self.motor_step_counter = (self.motor_step_counter - 1) % 4
                 self.angle -= 360 / self.step_count
                 
                 if self.angle < 0:
                     self.angle += 360
             else:
-                self.motor_step_counter = (self.motor_step_counter + 1) % 8
+                self.motor_step_counter = (self.motor_step_counter + 1) % 4
                 self.angle += 360 / self.step_count
                 
                 if self.angle > 360:
@@ -69,9 +71,6 @@ class Motor:
             time.sleep(self.step_sleep)        
 
     def move_angle(self, angle, min_movement=10):
-        if abs(angle) < min_movement:
-            return
-        
         steps = int((angle / 360) * self.step_count)
         self.direction = angle < 0
         self.move_steps(abs(steps))
@@ -86,7 +85,6 @@ class Motor:
         
         self.move_angle(move)
       
-
 """
 pidController = CircularPIDController(0.7,0.3,0.15,360)
 i= 0
