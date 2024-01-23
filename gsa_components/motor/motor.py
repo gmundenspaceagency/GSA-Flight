@@ -71,9 +71,12 @@ class Motor:
             time.sleep(self.step_sleep)        
 
     def move_angle(self, angle, min_movement=10):
+        if not abs(angle) > 1.8:
+            return
         steps = int((angle / 360) * self.step_count)
         self.direction = angle < 0
         self.move_steps(abs(steps))
+        self.angle += angle
 
     def set_angle(self, angle):
         move = angle - self.angle

@@ -229,7 +229,6 @@ luminance1 = luminance2 = luminance3 = None
 def rotation_mechanism() -> None:
     global luminance1, luminance2, luminance3
     
-    current_angle = 0
 
     while pi_state == 'running' or pi_state == 'shutting down':            
         try:  
@@ -270,10 +269,8 @@ def rotation_mechanism() -> None:
                     goal_angle += 360
                 
                 pidController = CircularPIDController(0.3,0,0,360)
-                calculatedAngle = pidController.calculate(goal_angle, current_angle)
-                if abs(calculatedAngle) > 1.8:
-                    motor.move_angle(calculatedAngle)
-                    current_angle += calculatedAngle
+                calculatedAngle = pidController.calculate(goal_angle, motor.current_angle)
+                motor.move_angle(calculatedAngle)
         except ValueError as error:
             print('Error in rotation mechanism: ' + str(error))
 
