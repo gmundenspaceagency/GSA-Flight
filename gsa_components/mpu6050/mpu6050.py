@@ -1,9 +1,9 @@
 import smbus
 import math
-from time import sleep
+import time
 
-class GYRO:
-    def __init__(self, bus_number: int = 1, address=0x68):
+class Mpu6050:
+    def __init__(self, bus_number:int=1, address=0x68):
         # Register
         self.power_mgmt_1 = 0x6b
         self.power_mgmt_2 = 0x6c
@@ -70,3 +70,11 @@ class GYRO:
         acceleration_zout_scaled = round(acceleration_zout / 16384.0, 2)
         
         return acceleration_xout_scaled, acceleration_yout_scaled, acceleration_zout_scaled
+
+if __name__ == '__main__':
+    mpu6050 = Mpu6050()
+
+    while True:
+        acceleration = mpu6050.get_scaled_acceleration()
+        print('Rotation: ' + str(mpu6050.get_rotation(*acceleration)))
+        time.sleep(1)

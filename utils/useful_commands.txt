@@ -1,0 +1,15 @@
+GPIO error: No access to /dev/mem beheben:
+sudo chown root.gpio /dev/gpiomem && sudo chmod g+rw /dev/gpiomem
+
+Test GPS:
+xgps
+
+Test Camera:
+libcamera-hello
+
+Andere Fehler
+0. Gerät richtig verkabeln
+1. Fehler googeln
+2. Entsprechende Änderungen raspi-config oder /boot/config.txt vollführen
+3. sudo reboot
+4. Tada Problem gelöst! (60% der Fälle)

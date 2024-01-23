@@ -1,20 +1,53 @@
 import time
-from time import sleep
+import smbus
 import datetime
+import RPi.GPIO as GPIO
+
+from typing import Optional
 from threading import Thread
 from gpiozero import LED, Button
-from bh1750 import BH1750
-import Adafruit_ADS1x15
-from bme import BME
-from gyroscope import GYRO
-import RPi.GPIO as GPIO
-from typing import Optional
-from motor import MOTOR
-from rak4200 import RAK4200
+from time import sleep, perf_counter
+
+# pimoroni-bme280280-1.0.0
+from bme280 import BME280
+from Adafruit_ADS1x15 import ADS1115
 from picamera2.encoders import H264Encoder
 from picamera2 import Picamera2, Preview
+from gsa_components.mpu6050.mpu6050 import Mpu6050
+from gsa_components.bh1750.bh1750 import Bh1750
+from gsa_components.motor import Motor
+from gsa_components.rak4200 import Rak4200
+from tests import CircularPIDController
 
-cansat_id = '69xd'
+"""
+Allgemeine ToDos:
+
+- Multiplexer class
+- GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
+    - GPS Höhendaten mit dem bme280280 Daten abgleichen
+- Temperaturdaten von GYRO und bme280280 abgleichen
+- Kameraaufnahmen machen
+- Detailliertes Flight-Log erstellen (Flight_19d-10m-2024y_17h-35m-01s.json)
+    - Für jeden timestap ALLE DATEN die wir überhaupt nur bekommen können speichern
+- Error handling
+    - Wenn ein Error zum ersten Mal auftritt: speichern wann er aufgetreten ist, den Fehlertext (str(error)), und wenn er wieder weggeht speicher wann er weggegangen ist
+    - Trotzdem noch alle Fehler printen
+    - In einer JSON Datei allen unseren Fehlern error codes zuordnen (eg. 01 -> Fehler mit Lichtsensor1, 08 -> Fehler mit bme280280)
+        - In einem Array aktuell aktive Fehler speichern und dieses Array wenn möglich zur Bodenstation schicken
+- Bodenstation und Transceiver
+    - Nur jedes zweite Datenpaket kommt bei der Bodenstation an
+    - Klasse von Transceiver ausbauen (error handling, bandwith and frequency setting, reset transceiver if not working)
+    - Diese Klasse auch in der Bodenstation verwenden
+    - Empfangene Daten in einem bodenstation-log.json speichern
+    - Kleine UI mit empfangenen Daten, mögliche Fehler Codes darstellen
+- Arbeit mit Daten nach Flug
+    - Wenn schon Flight-Log erstellt, probieren die Daten in coolen Diagrammen darzustellen
+- Script sofort nach Start von Pi ausführen
+"""
+
+CANSAT_ID = '69xd'
+BUS = smbus.SMBus(1)
+channel_array=[0b00000001,0b00000010,0b00000100,0b00001000,0b00010000,0b00100000,0b01000000,0b10000000]
 pi_state = 'initializing'
 print('Pi is initializing...')
 
@@ -23,7 +56,7 @@ blinking = False
 
 # initialize and test onboard led
 try:
-    onboard_led = LED(23)
+    status_led = LED(23)
 
     # controls blinking of pi led to indicate different states of pi
     def blink_onboard(timeout: float, state: str) -> None:
@@ -31,98 +64,74 @@ try:
         blinking = True
 
         while pi_state == state:
-            onboard_led.on()
+            status_led.on()
             sleep(timeout)
-            onboard_led.off()
+            status_led.off()
             sleep(timeout)
 
         blinking = False
 
-    # fast blinking to show pi is initializing
+    # blinking to show pi is initializing
     Thread(target=blink_onboard, args=(0.5, 'initializing')).start()
 except Exception as error:
-    onboard_led = None
+    status_led = None
     print('Warning: Onboard LED could not be initialized: ' + str(error))
 
 # initialize sensors
-def initialize_light1()->Optional[BH1750]:
+def initialize_light1()->Optional[Bh1750]:
     try:
-        light1 = BH1750()
-        light1.luminance(BH1750.ONCE_HIRES_1)
+        light1 = Bh1750()
+        light1.luminance(Bh1750.CONT_LOWRES)
     except Exception as error:
         light1 = None
         print('Problem with light sensor 1: ' + str(error))
     
     return light1
 
-def initialize_light2()->Optional[BH1750]:   
+def initialize_light2n3()->Optional[Bh1750]:   
     try:
-        GPIO.output(power_light2, 1)
-        GPIO.output(power_light3, 0)
-        
-        # wait until both pins have the desired states
-        while not GPIO.input(power_light2) or GPIO.input(power_light3):
-            pass
-        
-        light2 = BH1750(1, 0x5c)
-        light2.luminance(BH1750.ONCE_HIRES_1)
+        BUS.write_byte(0x70, channel_array[6])
+        light2 = Bh1750(1, 0x5c)
+        light2.luminance(Bh1750.CONT_LOWRES)
     except Exception as error:
         light2 = None
         print('Problem with light sensor 2: ' + str(error))
     
     return light2
 
-def initialize_light3()->Optional[BH1750]:
+def initialize_ads1115()->Optional[ADS1115]:
     try:
-        GPIO.output(power_light2, 0)
-        GPIO.output(power_light3, 1)
-        
-        # wait until both pins have the desired states
-        while GPIO.input(power_light2) or not GPIO.input(power_light3):
-            pass
-        
-        light3 = BH1750(1, 0x5c)
-        light3.luminance(BH1750.ONCE_HIRES_1)
+        ads1115 = ADS1115()
+        ads1115.read_adc(1, gain=1)
     except Exception as error:
-        light3 = None
-        print('Problem with light sensor 3: ' + str(error))
-    
-    return light3
-
-def initialize_adc()->Optional[Adafruit_ADS1x15.ADS1115]:
-    try:
-        adc = Adafruit_ADS1x15.ADS1115()
-        adc.read_adc(1, gain=1)
-    except Exception as error:
-        adc = None
+        ads1115 = None
         print('Problem with A/D-Converter: ' + str(error))
     
-    return adc
+    return ads1115
 
-def initialize_bme()->Optional[BME]:
+def initialize_bme280()->Optional[BME280]:
     try:
-        bme = BME()
-        bme.read_data()
+        bme280 = BME280()
+        bme280.get_temperature()
     except Exception as error:
-        bme = None
-        print('Problem with BME-Sensor: ' + str(error))
+        bme280 = None
+        print('Problem with BME280-Sensor: ' + str(error))
     
-    return bme
+    return bme280
  
-def initialize_gyro()->Optional[GYRO]:
+def initialize_mpu6050()->Optional[Mpu6050]:
     try:
-        gyro = GYRO()
-        gyro.get_scaled_acceleration()
+        mpu6050 = Mpu6050()
+        mpu6050.get_scaled_acceleration()
     except Exception as error:
-        gyro = None
-        print('Problem with gyroscope: ' + str(error))
+        mpu6050 = None
+        print('Problem with mpu6050scope: ' + str(error))
     
-    return gyro
+    return mpu6050
 
-def initialize_motor()->Optional[MOTOR]:
+def initialize_motor()->Optional[Motor]:
     try:
-        motor = MOTOR(19, 26, 20, 21)
-        motor.move_angle(120)
+        motor = Motor(26,19,13,6,200,0.002)
         # sleep(0.5)
         # motor.set_angle(270)
         # sleep(0.5)
@@ -137,9 +146,9 @@ def initialize_motor()->Optional[MOTOR]:
 Günther is the TRANSCEIVER!!!
 """
 
-def initialize_guenther()->Optional[RAK4200]:
+def initialize_guenther()->Optional[Rak4200]:
     try:
-        guenther = RAK4200()
+        guenther = Rak4200()
         guenther.start()
     except Exception as error:
         guenther = None
@@ -157,11 +166,10 @@ try:
     
     # every sensor is in a try-block so the program will still work when one of the sensors fails on launch
     light1 = initialize_light1()
-    light2 = initialize_light2()
-    light3 = initialize_light3()
-    adc = initialize_adc()
-    bme = initialize_bme()
-    gyro = initialize_gyro()
+    light2n3 = initialize_light2n3()
+    ads1115 = initialize_ads1115()
+    bme280 = initialize_bme280()
+    mpu6050 = initialize_mpu6050()
     motor = initialize_motor()
     guenther = initialize_guenther()
     
@@ -221,47 +229,32 @@ luminance1 = luminance2 = luminance3 = None
 def rotation_mechanism() -> None:
     global luminance1, luminance2, luminance3
     
-    while pi_state == 'running' or pi_state == 'shutting down':
-        try:
-            GPIO.setmode(GPIO.BCM)
-            power_light2 = 17
-            power_light3 = 27
-            GPIO.setup(17, GPIO.OUT, initial=0)
-            GPIO.setup(27, GPIO.OUT, initial=0)
-            GPIO.output(power_light2, 1)
-            GPIO.output(power_light3, 0)
-                
+    current_angle = 0
+
+    while pi_state == 'running' or pi_state == 'shutting down':            
+        try:  
             try:
-                luminance1 = round(light1.luminance(BH1750.ONCE_HIRES_1), 4)
+                luminance1 = round(light1.luminance(Bh1750.CONT_LOWRES), 4)
             except Exception as error:
                 # try to contact sensor again
                 light1 = initialize_light1()
 
-            try: 
-                # wait until both pins have the desired states
-                while not GPIO.input(power_light2) or GPIO.input(power_light3):
-                    pass
-                
-                luminance2 = round(light2.luminance(BH1750.ONCE_HIRES_1), 4)
-            except Exception as error:
-                # try to contact sensor again
-                light2 = initialize_light2()
-
             try:
-                GPIO.output(power_light2, 0)
-                GPIO.output(power_light3, 1)
-                
-                # wait until both pins have the desired states
-                while GPIO.input(power_light2) or not GPIO.input(power_light3):
-                    pass
-                
-                luminance3 = round(light3.luminance(BH1750.ONCE_HIRES_1), 4)
+                BUS.write_byte(0x70, channel_array[7])
+                luminance2 = round(light2n3.luminance(Bh1750.CONT_LOWRES), 4)
             except Exception as error:
                 # try to contact sensor again
-                light3 = initialize_light3()
+                light2 = initialize_light2n3()
+                
+            try:
+                BUS.write_byte(0x70, channel_array[6])
+                luminance3 = round(light2n3.luminance(Bh1750.CONT_LOWRES), 4)
+            except Exception as error:
+                # try to contact sensor again
+                light3 = initialize_light2n3()
             
             if luminance1 is not None and luminance2 is not None and luminance3 is not None:
-                luminances = [luminance1, luminance2, luminance3]
+                luminances = [luminance1, luminance3, luminance2]
                 angle_fraction = 360 / len(luminances)
                 highest = max(luminances)
                 index = luminances.index(highest)
@@ -269,19 +262,26 @@ def rotation_mechanism() -> None:
                 left = luminances[index - 1] if index > 0 else luminances[-1]
                 
                 if right > left:
-                    goal_angle = round(index / len(luminances) * (360 - angle_fraction) + angle_fraction * right / max(highest, 1))
+                    goal_angle = round(index / (len(luminances) - 1) * (360 - angle_fraction) + angle_fraction * right / max(highest, 1))
                 else:
-                    goal_angle = round(index / len(luminances) * (360 - angle_fraction) - angle_fraction * left / max(highest, 1))
+                    goal_angle = round(index / (len(luminances) - 1) * (360 - angle_fraction) - angle_fraction * left / max(highest, 1))
                 
-                motor.set_angle(goal_angle)
-        except KeyboardInterrupt as error:
+                if goal_angle < 0:
+                    goal_angle += 360
+                
+                pidController = CircularPIDController(0.3,0,0,360)
+                calculatedAngle = pidController.calculate(goal_angle, current_angle)
+                if abs(calculatedAngle) > 1.8:
+                    motor.move_angle(calculatedAngle)
+                    current_angle += calculatedAngle
+        except ValueError as error:
             print('Error in rotation mechanism: ' + str(error))
 
 def main()->None:
-    global pi_state, adc, bme, gyro, guenther
+    global pi_state, ads1115, bme280, mpu6050, guenther
 
     start_time = datetime.datetime.now()
-    start_perf = round(time.perf_counter() * 1000)
+    start_perf = round(perf_counter() * 1000)
     # TODO: realistische iteration time
     max_iteration_time = 2000
     timestamps = []
@@ -292,19 +292,18 @@ def main()->None:
     vertical_speeds = []
     vertical_accelerations = []
     rotationrates = []
-    gyro_accelerations = []
+    mpu6050_accelerations = []
     rotationangles = []
     
     Thread(target=rotation_mechanism, args=()).start()
-    sleep(1)
     
     # TODO: vor dem flug die onboard led sicher machen (falls verbindung weg) oder ganz removen
     while True:
-        timestamp = round(time.perf_counter() * 1000 - start_perf)
+        timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
 
-        if onboard_led is not None:
-            onboard_led.off()
+        if status_led is not None:
+            status_led.off()
         
         if len(timestamps) > 1:
             time_difference = timestamp - timestamps[-2]
@@ -315,26 +314,26 @@ def main()->None:
         print(f'Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}')
 
         try:
-            adc_value = adc.read_adc(1, gain=1)
-            solar_voltage = round(4.096 / 32767 * adc_value, 3)
+            ads1115_value = ads1115.read_ads1115(1, gain=1)
+            solar_voltage = round(4.096 / 32767 * ads1115_value, 3)
             print(f'Solar panel voltage: {solar_voltage}V')
         except Exception as error:
             # try to contact sensor again
-            adc = initialize_adc()
+            ads1115 = initialize_ads1115()
         
         # X means they were not set yet
         pressure = 'X'
         temperature = 'X'
         
         try:
-            data = bme.read_data()
-            pressure = round(float(data.pressure), 2)
+            bme280.update_sensor()
+            pressure = round(float(bme280.pressure), 2)
             pressures.append(pressure)
-            temperature = round(float(data.temperature), 2)
+            temperature = round(float(bme280.temperature), 2)
             temperatures.append(temperature)
-            humidity = round(float(data.humidity) / 100, 2)
+            humidity = round(float(bme280.humidity) / 100, 2)
             humidities.append(humidity)
-            altitude = round(44331.5 - 4946.62 * (pressure * 100) ** 0.190263, 2)
+            altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
             altitudes.append(altitude)
 
             print(f'Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%')
@@ -359,16 +358,16 @@ def main()->None:
                 print(f'Acceleration: {vertical_acceleration}m/s^2, Average acceleration: {avg_vertical_acceleration}m/s^2')
         except Exception as error:
             # try to contact sensor again
-            bme = initialize_bme()
+            bme280 = initialize_bme280()
     
         try:
-            gyro_data = gyro.get_scaled_gyroscope()
+            gyro_data = mpu6050.get_scaled_gyroscope()
             rotationrates.append(gyro_data)
             rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
-            acceleration = gyro.get_scaled_acceleration()
-            gyro_accelerations.append(acceleration)
+            acceleration = mpu6050.get_scaled_acceleration()
+            mpu6050_accelerations.append(acceleration)
             acceleration_x, acceleration_y, acceleration_z = acceleration
-            rotation = gyro.get_rotation(*acceleration)
+            rotation = mpu6050.get_rotation(*acceleration)
             rotationangles.append(rotation)
             rotation_x, rotation_y = rotation
             
@@ -377,16 +376,17 @@ def main()->None:
             print(f'Angle of rotation (°): {rotation_x}x {rotation_y}y')
         except Exception as error:
             # try to contact sensor again
-            gyro = initialize_gyro()
+            mpu6050 = initialize_mpu6050()
         
         try:
-            guenther.send(f'{cansat_id}-{timestamp}-{rotation_x}-{rotation_y}')
+            guenther.send(f'{CANSAT_ID};{timestamp};{pressure};{temperature}')
         except Exception as error:
             # try to contact transceiver again
+            print(str(error))
             guenther = initialize_guenther()
         
-        if onboard_led is not None:
-            onboard_led.on()
+        if status_led is not None:
+            status_led.on()
 
         # check for turn off
         if power_button.is_pressed:
@@ -402,8 +402,8 @@ def main()->None:
             if power_button.is_pressed:
                 print('Program switched off with power button')
 
-                if onboard_led is not None:
-                    onboard_led.on()
+                if status_led is not None:
+                    status_led.on()
 
                 exit()
             else:
@@ -412,8 +412,8 @@ def main()->None:
                 while blinking:
                     pass 
 
-                if onboard_led is not None:
-                    onboard_led.on()
+                if status_led is not None:
+                    status_led.on()
 
         sleep(1)
 
@@ -424,8 +424,8 @@ try:
     while blinking:
         pass
 
-    if onboard_led is not None:
-        onboard_led.on()
+    if status_led is not None:
+        status_led.on()
 
     # wait until power button is let go
     while power_button.is_pressed:
@@ -436,8 +436,8 @@ try:
 except KeyboardInterrupt:
     print('Running program stopped by keyboard interrupt')
 
-    if onboard_led is not None:
-        onboard_led.off()
+    if status_led is not None:
+        status_led.off()
 
 finally:
     if motor is not None:
@@ -445,7 +445,7 @@ finally:
     
     GPIO.cleanup()
     pi_state = 'off'
-    currentTime = datetime.now()
+    currentTime = datetime.datetime.now()
     currentTimeStr = currentTime.strftime("%H:%M:%S")
     guenther.send('(Info) CanSat program finished at: ' + currentTimeStr) 
     print('bye bye')

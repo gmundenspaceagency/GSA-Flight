@@ -2,7 +2,7 @@ import time
 from smbus2 import SMBus
 from time import sleep
 
-class BH1750:
+class Bh1750:
     """Standard Python BH1750 ambient light sensor driver."""
 
     PWR_OFF = 0x00
@@ -22,7 +22,7 @@ class BH1750:
         self.addr = addr
         self.off()
         self.reset()
-
+    
     def off(self):
         """Turn sensor off."""
         self.set_mode(self.PWR_OFF)
@@ -54,3 +54,11 @@ class BH1750:
         data = self.bus.read_i2c_block_data(self.addr, 0x20, 2)
         factor = 2.0 if mode in (0x11, 0x21) else 1.0
         return (data[0] << 8 | data[1]) / (1.2 * factor)
+
+if __name__ == '__main__':
+    bh1750 = Bh1750()
+
+    while True:
+        luminance = bh1750.luminance(Bh1750.ONCE_HIRES_1)
+        print('luminance: %f lux' % luminance)
+        time.sleep(1)
