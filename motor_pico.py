@@ -78,8 +78,8 @@ class CircularPIDController:
         self.prev_error = error
         return output
 motor = MOTOR(0,1,2,3,200,0.003)
-
-
+motor.move_steps(1000)
+"""
 pidController = CircularPIDController(0.7,0.3,0.15,360)
 i= 0
 currentAngle=0
@@ -102,4 +102,4 @@ while i < 400:
     
 print(listOfCurrentAngles)
 
-
+"""
