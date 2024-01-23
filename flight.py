@@ -43,6 +43,8 @@ Allgemeine ToDos:
 - Arbeit mit Daten nach Flug
     - Wenn schon Flight-Log erstellt, probieren die Daten in coolen Diagrammen darzustellen
 - Script sofort nach Start von Pi ausführen
+-Create a low power mode
+-only activate motor on the way down
 """
 
 CANSAT_ID = '69xd'
