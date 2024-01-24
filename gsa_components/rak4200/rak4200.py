@@ -109,8 +109,8 @@ class Rak4200:
 
     def start(self:any, mode:str)->None:
         self.set_mode(mode)
-        # Setting bandwidth to 1 (250kHz) for faster data transmission
-        test.set_p2p_config(bandwidth=1)
+        # Setting bandwidth to 1 (250kHz) for faster data transmission and spread factor to 7 (obligatory in Europe when using 250kHz)
+        test.set_p2p_config(andwidth=1, spreadfact=7)
         currentTime = datetime.now()
         currentTimeStr = currentTime.strftime('%H:%M:%S')
 
@@ -133,6 +133,12 @@ class Rak4200:
         if received_data != b'':
             try:
                 decoded_data = received_data.decode('utf-8')
+
+                if 'ERROR: ' in decoded_data:
+                    error_code = int(decoded_data.replace('ERROR: ', ''))
+                    error = ERROR_CODES[error_code]
+                    print(f'RAK4200-Error {error_code}: {error}')
+            
                 data_str = decoded_data.split('=')[1]
                 data_vals = data_str.split(',')
                 signal_strength = int(data_vals[0])
@@ -161,8 +167,9 @@ if __name__ == '__main__':
         print('RAK4200 connected, receiving messages...')
 
         while True:
-            data = test.uart0.read_until(b'\n')
-            if data != b'':
+            data = test.receive()
+
+            if data is not None:
                 print(data)
 
     if test_mode == 'send':
