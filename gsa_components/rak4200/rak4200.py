@@ -37,13 +37,13 @@ ERROR_CODES = {
 }
 
 class Rak4200:
-    def __init__(self:any, baudrate=115200, serial_port='/dev/ttyS0', timeout:float=None)->None:
+    def __init__(self:any, baudrate=115200, serial_port='/dev/ttyS0')->None:
         if not os.path.exists(serial_port):
             raise RuntimeError(f'Device not connected at {serial_port}')
 
         self.baudrate = baudrate
         self.serial_port = serial_port
-        self.uart0 = serial.Serial(serial_port, baudrate=baudrate, timeout=timeout)
+        self.uart0 = serial.Serial(serial_port, baudrate=baudrate, timeout=None)
 
     def sendAtCMD(self:any, uart:serial.Serial, at_cmd:str, wait:int=1)->Optional[str]:
         uart.write((at_cmd + '\r\n').encode())
@@ -84,12 +84,12 @@ class Rak4200:
         # wait for module restart
         time.sleep(1)
 
-    def set_p2p_config(self:any, frequency:int=869525000, spreadfact:int=12, bandwidth:int=0, codingrate:int=1, preamble_length:int=8, tx_power:int=20):
+    def set_p2p_config(self:any, frequency:int=869.525, spreadfact:int=12, bandwidth:int=0, codingrate:int=1, preamble_length:int=8, tx_power:int=20):
         """
         Configures parameters for point-to-point communication.
 
         Parameters:
-        - frequency (int): Frequency in Hertz (Hz). Default is 869525000 Hz.
+        - frequency (int): Frequency in Mega-Hertz (MHz). Default is 869.525 MHz.
         - spreadfact (int): Spreading factor. Default is 12.
         - bandwidth (int): Bandwidth in kHz. Options: 0 (125 kHz), 1 (250 kHz), 2 (500 kHz). Default is 0.
         - codingrate (int): Coding rate options: 1 (4/5), 2 (4/6), 3 (4/7), 4 (4/8). Default is 1.
@@ -100,7 +100,7 @@ class Rak4200:
         None
         """ 
 
-        response = self.sendAtCMD(self.uart0, f'at+set_config=lorap2p:{frequency}:{spreadfact}:{bandwidth}:{codingrate}:{preamble_length}:{tx_power}')
+        response = self.sendAtCMD(self.uart0, f'at+set_config=lorap2p:{frequency * 1_000_000}:{spreadfact}:{bandwidth}:{codingrate}:{preamble_length}:{tx_power}')
         self.parse_response(response)
 
     def get_version(self:any)->str:
@@ -109,6 +109,8 @@ class Rak4200:
 
     def start(self:any, mode:str)->None:
         self.set_mode(mode)
+        # Setting bandwidth to 1 (250kHz) for faster data transmission
+        test.set_p2p_config(bandwidth=1)
         currentTime = datetime.now()
         currentTimeStr = currentTime.strftime('%H:%M:%S')
 
@@ -154,7 +156,7 @@ if __name__ == '__main__':
     test_mode = 'receive'
 
     if test_mode == 'receive':
-        test = Rak4200(serial_port='/dev/ttyUSB0', timeout=None)
+        test = Rak4200(serial_port='/dev/ttyUSB0')
         test.set_mode('receive')
         print('RAK4200 connected, receiving messages...')
 
@@ -166,7 +168,6 @@ if __name__ == '__main__':
     if test_mode == 'send':
         test = Rak4200(serial_port='/dev/ttyS0')
         test.set_mode('send')
-        test.set_p2p_config()
         print('RAK4200 connected, sending test data...')
 
         while True:
