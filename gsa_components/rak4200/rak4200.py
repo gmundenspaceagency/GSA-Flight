@@ -37,13 +37,13 @@ ERROR_CODES = {
 }
 
 class Rak4200:
-    def __init__(self:any, baudrate=115200, serial_port='/dev/ttyS0')->None:
+    def __init__(self:any, baudrate=115200, serial_port='/dev/ttyS0', timeout:float=None)->None:
         if not os.path.exists(serial_port):
             raise RuntimeError(f'Device not connected at {serial_port}')
 
         self.baudrate = baudrate
         self.serial_port = serial_port
-        self.uart0 = serial.Serial(serial_port, baudrate=baudrate, timeout=None)
+        self.uart0 = serial.Serial(serial_port, baudrate=baudrate, timeout=timeout)
 
     def sendAtCMD(self:any, uart:serial.Serial, at_cmd:str, wait:int=1)->Optional[str]:
         uart.write((at_cmd + '\r\n').encode())
@@ -83,7 +83,26 @@ class Rak4200:
 
         # wait for module restart
         time.sleep(1)
-  
+
+    def set_p2p_config(self:any, frequency:int=869525000, spreadfact:int=12, bandwidth:int=0, codingrate:int=1, preamble_length:int=8, tx_power:int=20):
+        """
+        Configures parameters for point-to-point communication.
+
+        Parameters:
+        - frequency (int): Frequency in Hertz (Hz). Default is 869525000 Hz.
+        - spreadfact (int): Spreading factor. Default is 12.
+        - bandwidth (int): Bandwidth in kHz. Options: 0 (125 kHz), 1 (250 kHz), 2 (500 kHz). Default is 0.
+        - codingrate (int): Coding rate options: 1 (4/5), 2 (4/6), 3 (4/7), 4 (4/8). Default is 1.
+        - preamble_length (int): Preamble length. Range: 5 to 65535. Default is 8.
+        - tx_power (int): Transmit power in dBm. Range: 5 to 20. Default is 20.
+
+        Returns:
+        None
+        """ 
+
+        response = self.sendAtCMD(self.uart0, f'at+set_config=lorap2p:{frequency}:{spreadfact}:{bandwidth}:{codingrate}:{preamble_length}:{tx_power}')
+        self.parse_response(response)
+
     def get_version(self:any)->str:
         response = self.sendAtCMD(self.uart0, f'at+version')
         return self.parse_response(response)
@@ -100,13 +119,14 @@ class Rak4200:
         if self.mode != 'send':
             self.set_mode('send')
 
+        # self.uart0.write(f'at+send=lorap2p:{data.encode('utf-8').hex()}\r\n') ??
         self.uart0.write(('at+send=lorap2p:' + data.encode('utf-8').hex() + '\r\n').encode())
 
     def receive(self:any)->Optional[dict]:
         if self.mode != 'receive':
             self.set_mode('receive')
         
-        received_data = self.uart0.read_until(b'\n')
+        received_data = self.uart0.readline()
 
         if received_data != b'':
             try:
@@ -134,19 +154,19 @@ if __name__ == '__main__':
     test_mode = 'receive'
 
     if test_mode == 'receive':
-        test = Rak4200(serial_port='/dev/ttyUSB0')
+        test = Rak4200(serial_port='/dev/ttyUSB0', timeout=None)
         test.set_mode('receive')
         print('RAK4200 connected, receiving messages...')
 
         while True:
-            data = test.receive()
-
-            if data is not None:
-                print(data['message'])
+            data = test.uart0.read_until(b'\n')
+            if data != b'':
+                print(data)
 
     if test_mode == 'send':
         test = Rak4200(serial_port='/dev/ttyS0')
         test.set_mode('send')
+        test.set_p2p_config()
         print('RAK4200 connected, sending test data...')
 
         while True:
