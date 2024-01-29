@@ -59,6 +59,6 @@ if __name__ == '__main__':
     bh1750 = Bh1750()
 
     while True:
-        luminance = bh1750.luminance(Bh1750.ONCE_HIRES_1)
+        luminance = bh1750.luminance(Bh1750.CONT_LOWRES)
         print('luminance: %f lux' % luminance)
-        time.sleep(1)
+        time.sleep(0.1)

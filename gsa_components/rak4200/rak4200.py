@@ -44,11 +44,13 @@ class Rak4200:
         self.baudrate = baudrate
         self.serial_port = serial_port
         self.uart0 = serial.Serial(serial_port, baudrate=baudrate, timeout=None)
-
-    def sendAtCMD(self:any, uart:serial.Serial, at_cmd:str, wait:int=1)->Optional[str]:
-        uart.write((at_cmd + '\r\n').encode())
+        # wait for serial port connection to be established
         time.sleep(1)
-        dataString = uart.readline().decode('utf-8', errors='replace')
+
+    def sendAtCMD(self:any, at_cmd:str, wait:int=1)->Optional[str]:
+        self.uart0.write((at_cmd + '\r\n').encode())
+        time.sleep(wait)
+        dataString = self.uart0.readline().decode('utf-8', errors='replace')
         return dataString if dataString != '' else None
     
     def parse_response(self:any, response:str, allow_empty:bool=False)->str:
@@ -74,11 +76,11 @@ class Rak4200:
         
         self.mode = mode
         mode_number = '1' if mode == 'receive' else '2'
-        response = self.sendAtCMD(self.uart0, f'at+set_config=lorap2p:transfer_mode:{mode_number}')
+        response = self.sendAtCMD(f'at+set_config=lorap2p:transfer_mode:{mode_number}')
         self.parse_response(response)
 
     def set_workmode_p2p(self:any)->None:
-        response = self.sendAtCMD(self.uart0, 'at+set_config=lora:work_mode:1')
+        response = self.sendAtCMD('at+set_config=lora:work_mode:1')
         self.parse_response(response, allow_empty=True)
 
         # wait for module restart
@@ -100,17 +102,17 @@ class Rak4200:
         None
         """ 
 
-        response = self.sendAtCMD(self.uart0, f'at+set_config=lorap2p:{frequency * 1_000_000}:{spreadfact}:{bandwidth}:{codingrate}:{preamble_length}:{tx_power}')
+        response = self.sendAtCMD(f'at+set_config=lorap2p:{int(frequency * 1_000_000)}:{spreadfact}:{bandwidth}:{codingrate}:{preamble_length}:{tx_power}')
         self.parse_response(response)
 
     def get_version(self:any)->str:
-        response = self.sendAtCMD(self.uart0, f'at+version')
+        response = self.sendAtCMD(f'at+version')
         return self.parse_response(response)
 
     def start(self:any, mode:str)->None:
         self.set_mode(mode)
         # Setting bandwidth to 1 (250kHz) for faster data transmission and spread factor to 7 (obligatory in Europe when using 250kHz)
-        test.set_p2p_config(andwidth=1, spreadfact=7)
+        self.set_p2p_config(bandwidth=1, spreadfact=7)
         currentTime = datetime.now()
         currentTimeStr = currentTime.strftime('%H:%M:%S')
 
@@ -159,7 +161,7 @@ class Rak4200:
 
 
 if __name__ == '__main__':
-    test_mode = 'receive'
+    test_mode = 'send'
 
     if test_mode == 'receive':
         test = Rak4200(serial_port='/dev/ttyUSB0')
