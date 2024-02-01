@@ -19,7 +19,7 @@ from gsa_components.motor import Motor
 from gsa_components.rak4200 import Rak4200
 from tests import CircularPIDController
 
-"""
+'''
 Allgemeine ToDos:
 
 - Multiplexer class
@@ -45,7 +45,7 @@ Allgemeine ToDos:
 - Script sofort nach Start von Pi ausführen
 -Create a low power mode
 -only activate motor on the way down
-"""
+'''
 
 CANSAT_ID = '69xd'
 BUS = smbus.SMBus(1)
@@ -144,9 +144,9 @@ def initialize_motor()->Optional[Motor]:
     
     return motor
 
-"""
+'''
 Günther is the TRANSCEIVER!!!
-"""
+'''
 
 def initialize_guenther()->Optional[Rak4200]:
     try:
@@ -177,7 +177,7 @@ try:
     
     try:
         picam2 = Picamera2()
-        video_config = picam2.create_video_configuration(main={"size": (1920, 1080)})
+        video_config = picam2.create_video_configuration(main={'size': (1920, 1080)})
         picam2.configure(video_config)
         encoder = H264Encoder(bitrate=1000000)
         output = '/home/gsa202324/Desktop/test.h264'
@@ -188,7 +188,7 @@ except KeyboardInterrupt:
     print('Initializing aborted by keyboard interrupt')
     GPIO.cleanup()
     exit()
-
+'''
 try:
     pi_state = 'ready'
     print('Pi is ready, hold start button to start program')
@@ -225,12 +225,11 @@ except KeyboardInterrupt:
     print('Program stopped in ready state by keyboard interrupt')
     GPIO.cleanup()
     exit()
-
+'''
 luminance1 = luminance2 = luminance3 = None
 
 def rotation_mechanism() -> None:
     global luminance1, luminance2, luminance3
-    
 
     while pi_state == 'descending':            
         try:  
@@ -300,7 +299,7 @@ def main()->None:
     
     # TODO: vor dem flug die onboard led sicher machen (falls verbindung weg) oder ganz removen
     while True:
-        if pi_state == "ground_level":
+        if pi_state == 'ground_level':
             #make sure that the motor thread is not running
             rotation_thread().join()
             bme280.update_sensor()
@@ -309,42 +308,21 @@ def main()->None:
             altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
             start_altitude = altitude
             altitudes.append(altitude)
+            
             while True:
                 bme280.update_sensor()
                 pressure = round(float(bme280.pressure), 2)
                 pressures.append(pressure)
                 altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
                 altitudes.append(altitude)
+                
                 if altitude > start_altitude + 10:
-                    pi_state = "ascending"
+                    pi_state = 'ascending'
                     break
-            if power_button.is_pressed:
-                    pi_state = 'shutting down'
-                    
-                    while blinking:
-                        pass
-                    
-                    # fast flashing telling pi is about to shut down
-                    Thread(target=blink_onboard, args=(0.05, 'shutting down')).start()
-                    sleep(1)
-
-                    if power_button.is_pressed:
-                        print('Program switched off with power button')
-
-                        if status_led is not None:
-                            status_led.on()
-
-                        exit()
-                    else:
-                        pi_state = 'running'
-
-                        while blinking:
-                            pass 
-
-                        if status_led is not None:
-                            status_led.on()
-            sleep(1)
-        if pi_state == "ascending":
+                
+                sleep(1)
+            
+        if pi_state == 'ascending':
             while True:
                 timestamp = round(perf_counter() * 1000 - start_perf)
                 timestamps.append(timestamp)
@@ -592,6 +570,6 @@ finally:
     GPIO.cleanup()
     pi_state = 'off'
     currentTime = datetime.datetime.now()
-    currentTimeStr = currentTime.strftime("%H:%M:%S")
+    currentTimeStr = currentTime.strftime('%H:%M:%S')
     guenther.send('(Info) CanSat program finished at: ' + currentTimeStr) 
     print('bye bye')
