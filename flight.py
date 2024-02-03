@@ -8,7 +8,7 @@ from threading import Thread
 from gpiozero import LED, Button
 from time import sleep, perf_counter
 
-# pimoroni-bme280280-1.0.0
+# pimoroni-bme280 1.0.0
 from bme280 import BME280
 from Adafruit_ADS1x15 import ADS1115
 from picamera2.encoders import H264Encoder
@@ -146,7 +146,7 @@ def initialize_guenther()->Optional[Rak4200]:
     try:
         guenther = Rak4200()
         guenther.start('send')
-    except TypeError as error:
+    except Exception as error:
         guenther = None
         print('Problem with guenther: ' + str(error))
     
