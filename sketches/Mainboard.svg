@@ -8,7 +8,7 @@
    version="1.1"
    id="svg5"
    inkscape:version="1.2 (dc2aedaf03, 2022-05-15)"
-   sodipodi:docname="Schaltkreis.svg"
+   sodipodi:docname="Mainboard.svg"
    inkscape:export-filename="Schaltkreis.png"
    inkscape:export-xdpi="312.6669"
    inkscape:export-ydpi="312.6669"
@@ -27,9 +27,9 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="1.0104048"
-     inkscape:cx="327.59147"
-     inkscape:cy="395.88093"
+     inkscape:zoom="1.4289282"
+     inkscape:cx="408.69794"
+     inkscape:cy="244.93883"
      inkscape:window-width="1920"
      inkscape:window-height="974"
      inkscape:window-x="-11"
@@ -365,185 +365,6 @@
        x="132.48216"
        y="187.21233" />
     <rect
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.472695;stroke-dasharray:none;stroke-opacity:1"
-       id="rect23606"
-       width="8.9150848"
-       height="2.8047359"
-       x="115.88266"
-       y="190.24072" />
-    <rect
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.337534;stroke-dasharray:none;stroke-opacity:1"
-       id="rect23608"
-       width="5.3470035"
-       height="2.3844101"
-       x="104.78154"
-       y="190.17316" />
-    <text
-       xml:space="preserve"
-       style="font-size:2.40214px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.180161"
-       x="117.56968"
-       y="195.51442"
-       id="text23612"><tspan
-         sodipodi:role="line"
-         id="tspan23610"
-         style="stroke-width:0.180161"
-         x="117.56968"
-         y="195.51442">USB</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:2.40214px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.180161"
-       x="101.1656"
-       y="195.51442"
-       id="text23616"><tspan
-         sodipodi:role="line"
-         id="tspan23614"
-         style="stroke-width:0.180161"
-         x="101.1656"
-         y="195.51442">USB-Micro</tspan></text>
-    <rect
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.332011;stroke-dasharray:none;stroke-opacity:1"
-       id="rect25235"
-       width="11.277714"
-       height="1.0937992"
-       x="87.316277"
-       y="190.17039" />
-    <text
-       xml:space="preserve"
-       style="font-size:2.40214px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.180161"
-       x="87.036896"
-       y="195.51442"
-       id="text25239"><tspan
-         sodipodi:role="line"
-         id="tspan25237"
-         style="stroke-width:0.180161"
-         x="87.036896"
-         y="195.51442">CAMERA</tspan></text>
-    <rect
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.499999;stroke-dasharray:none;stroke-opacity:1"
-       id="rect26141"
-       width="16.109102"
-       height="14.257481"
-       x="58.634071"
-       y="164.94156" />
-    <text
-       xml:space="preserve"
-       style="font-size:2.40214px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.180161"
-       x="61.669685"
-       y="176.99821"
-       id="text26204"><tspan
-         sodipodi:role="line"
-         id="tspan26202"
-         style="stroke-width:0.180161"
-         x="61.669685"
-         y="176.99821">Camera</tspan></text>
-    <ellipse
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.499999;stroke-dasharray:none;stroke-opacity:1"
-       id="path26319"
-       cx="66.622375"
-       cy="170.62894"
-       rx="2.4071071"
-       ry="2.221945" />
-    <path
-       id="rect26383"
-       style="fill:#bebebe;stroke:#000000;stroke-width:0.584623;stroke-opacity:1"
-       d="m 74.137687,167.48373 v 8.24756 h 14.16451 v 14.53503 h 8.247554 v -14.53503 h 0.093 v -8.24756 z" />
-    <rect
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.499999;stroke-dasharray:none;stroke-opacity:1"
-       id="rect26390"
-       width="16.109102"
-       height="14.257481"
-       x="57.893425"
-       y="111.15765" />
-    <text
-       xml:space="preserve"
-       style="font-size:2.40214px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.180161"
-       x="58.865005"
-       y="123.58466"
-       id="text26394"><tspan
-         sodipodi:role="line"
-         id="tspan26392"
-         style="stroke-width:0.180161"
-         x="58.865005"
-         y="123.58466">GT-U7 (GPS)</tspan></text>
-    <rect
-       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.490547;stroke-dasharray:none;stroke-opacity:1"
-       id="rect26514"
-       width="47.586658"
-       height="2.221945"
-       x="73.817375"
-       y="117.26804" />
-    <rect
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.499999;stroke-dasharray:none;stroke-opacity:1"
-       id="rect26620"
-       width="23.885908"
-       height="32.218204"
-       x="58.21019"
-       y="128.83495" />
-    <rect
-       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.589388;stroke-dasharray:none;stroke-opacity:1"
-       id="rect27348"
-       width="68.695137"
-       height="2.221945"
-       x="-187.79233"
-       y="119.19333"
-       transform="rotate(-90)" />
-    <rect
-       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.212403;stroke-dasharray:none;stroke-opacity:1"
-       id="rect27352"
-       width="3.8851001"
-       height="5.1023912"
-       x="-191.45836"
-       y="117.81857"
-       transform="rotate(-90)" />
-    <rect
-       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.364635;stroke-dasharray:none;stroke-opacity:1"
-       id="rect27354"
-       width="26.293018"
-       height="2.221945"
-       x="81.779343"
-       y="142.73894" />
-    <rect
-       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.479934;stroke-dasharray:none;stroke-opacity:1"
-       id="rect27356"
-       width="45.549877"
-       height="2.221945"
-       x="-188.28882"
-       y="106.41714"
-       transform="rotate(-90)" />
-    <rect
-       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.18567;stroke-dasharray:none;stroke-opacity:1"
-       id="rect27358"
-       width="3.8851001"
-       height="3.8988376"
-       x="-191.36578"
-       y="105.69045"
-       transform="rotate(-90)" />
-    <text
-       xml:space="preserve"
-       style="font-size:2.40214px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.180161"
-       x="63.494057"
-       y="158.39514"
-       id="text29218"><tspan
-         sodipodi:role="line"
-         id="tspan29216"
-         style="stroke-width:0.180161"
-         x="63.494057"
-         y="158.39514">Battery-Hat</tspan></text>
-    <rect
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.499999;stroke-dasharray:none;stroke-opacity:1"
-       id="rect29295"
-       width="5.9251866"
-       height="20.36783"
-       x="66.675011"
-       y="131.05688" />
-    <rect
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.499999;stroke-dasharray:none;stroke-opacity:1"
-       id="rect29373"
-       width="3.1477556"
-       height="0.74064833"
-       x="68.202599"
-       y="151.60989" />
-    <rect
        style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.499999;stroke-dasharray:none;stroke-opacity:1"
        id="rect29452"
        width="26.709591"
@@ -561,25 +382,6 @@
          style="stroke-width:0.187573"
          x="58.558594"
          y="95.950821">Motor Controller</tspan></text>
-    <rect
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.161885;stroke-dasharray:none;stroke-opacity:1"
-       id="rect29538"
-       width="1.8062515"
-       height="7.0039492"
-       x="58.358822"
-       y="132.84564" />
-    <text
-       xml:space="preserve"
-       style="font-size:2.40214px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.180161"
-       x="-146.14714"
-       y="55.419304"
-       id="text29542"
-       transform="rotate(-90)"><tspan
-         sodipodi:role="line"
-         id="tspan29540"
-         style="stroke-width:0.180161"
-         x="-146.14714"
-         y="55.419304">USB-C (Charge)</tspan></text>
     <path
        style="fill:none;stroke:#78007b;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="M 133.03825,187.63591 V 105.93599 H 83.023234"

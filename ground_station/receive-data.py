@@ -3,14 +3,6 @@ import time
 import os
 from typing import Optional
 
-# TODO: use rak4200 class to do this
-# Don't sleep between listen but find out when a message starts and when it ends
-# Extend the rak4200 class to handle settings of frequency and co, also better communication with sensor like wait for ready and restart (read documentation)
-# Add Error handling to transmitting and receiving
-# Do cool stuff with the received data (and make sure the program can't break from receiving defect transmissions)
-# We need a .gitignore for _pycache_ and co
-# Access my VM over remote desktop, vpn?
-
 cansat_id = '69xd'
 
 def is_device_connected(device_path):
