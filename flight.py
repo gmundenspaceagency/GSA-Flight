@@ -8,7 +8,7 @@ from threading import Thread
 from gpiozero import LED, Button
 from time import sleep, perf_counter
 
-# pimoroni-bme280280-1.0.0
+# pimoroni-bme280 1.0.0
 from bme280 import BME280
 from Adafruit_ADS1x15 import ADS1115
 from picamera2.encoders import H264Encoder
@@ -35,9 +35,6 @@ Allgemeine ToDos:
     - In einer JSON Datei allen unseren Fehlern error codes zuordnen (eg. 01 -> Fehler mit Lichtsensor1, 08 -> Fehler mit bme280280)
         - In einem Array aktuell aktive Fehler speichern und dieses Array wenn möglich zur Bodenstation schicken
 - Bodenstation und Transceiver
-    - Nur jedes zweite Datenpaket kommt bei der Bodenstation an
-    - Klasse von Transceiver ausbauen (error handling, bandwith and frequency setting, reset transceiver if not working)
-    - Diese Klasse auch in der Bodenstation verwenden
     - Empfangene Daten in einem bodenstation-log.json speichern
     - Kleine UI mit empfangenen Daten, mögliche Fehler Codes darstellen
 - Arbeit mit Daten nach Flug
@@ -74,14 +71,13 @@ try:
     # blinking to show pi is initializing
     Thread(target=blink_onboard, args=(0.5, 'initializing')).start()
 except Exception as error:
-    status_led = None
     print('Warning: Onboard LED could not be initialized: ' + str(error))
 
 # initialize sensors
 def initialize_light1()->Optional[Bh1750]:
     try:
         light1 = Bh1750()
-        light1.luminance(Bh1750.CONT_LOWRES)
+        light1.luminance(Bh1750.ONCE_LOWRES)
     except Exception as error:
         light1 = None
         print('Problem with light sensor 1: ' + str(error))
@@ -92,7 +88,7 @@ def initialize_light2n3()->Optional[Bh1750]:
     try:
         BUS.write_byte(0x70, channel_array[6])
         light2 = Bh1750(1, 0x5c)
-        light2.luminance(Bh1750.CONT_LOWRES)
+        light2.luminance(Bh1750.ONCE_LOWRES)
     except Exception as error:
         light2 = None
         print('Problem with light sensor 2: ' + str(error))
@@ -102,7 +98,7 @@ def initialize_light2n3()->Optional[Bh1750]:
 def initialize_ads1115()->Optional[ADS1115]:
     try:
         ads1115 = ADS1115()
-        ads1115.read_adc(1, gain=1)
+        ads1115.read_adc(0, gain=1)
     except Exception as error:
         ads1115 = None
         print('Problem with A/D-Converter: ' + str(error))
@@ -149,7 +145,7 @@ Günther is the TRANSCEIVER!!!
 def initialize_guenther()->Optional[Rak4200]:
     try:
         guenther = Rak4200()
-        guenther.start()
+        guenther.start('send')
     except Exception as error:
         guenther = None
         print('Problem with guenther: ' + str(error))
@@ -234,21 +230,20 @@ def rotation_mechanism() -> None:
     while pi_state == 'running' or pi_state == 'shutting down':            
         try:  
             try:
-                luminance1 = round(light1.luminance(Bh1750.CONT_LOWRES), 4)
+                luminance1 = round(light1.luminance(Bh1750.ONCE_LOWRES), 4)
             except Exception as error:
                 # try to contact sensor again
                 light1 = initialize_light1()
-
             try:
                 BUS.write_byte(0x70, channel_array[7])
-                luminance2 = round(light2n3.luminance(Bh1750.CONT_LOWRES), 4)
+                luminance2 = round(light2n3.luminance(Bh1750.ONCE_LOWRES), 4)
             except Exception as error:
                 # try to contact sensor again
                 light2 = initialize_light2n3()
                 
             try:
                 BUS.write_byte(0x70, channel_array[6])
-                luminance3 = round(light2n3.luminance(Bh1750.CONT_LOWRES), 4)
+                luminance3 = round(light2n3.luminance(Bh1750.ONCE_LOWRES), 4)
             except Exception as error:
                 # try to contact sensor again
                 light3 = initialize_light2n3()
@@ -296,14 +291,12 @@ def main()->None:
     rotationangles = []
     
     Thread(target=rotation_mechanism, args=()).start()
+    sleep(1)
     
-    # TODO: vor dem flug die onboard led sicher machen (falls verbindung weg) oder ganz removen
     while True:
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
-
-        if status_led is not None:
-            status_led.off()
+        status_led.off()
         
         if len(timestamps) > 1:
             time_difference = timestamp - timestamps[-2]
@@ -314,11 +307,12 @@ def main()->None:
         print(f'Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}')
 
         try:
-            ads1115_value = ads1115.read_ads1115(1, gain=1)
+            ads1115_value = ads1115.read_adc(0, gain=1)
             solar_voltage = round(4.096 / 32767 * ads1115_value, 3)
             print(f'Solar panel voltage: {solar_voltage}V')
         except Exception as error:
             # try to contact sensor again
+            print(str(error))
             ads1115 = initialize_ads1115()
         
         # X means they were not set yet
@@ -385,8 +379,7 @@ def main()->None:
             print(str(error))
             guenther = initialize_guenther()
         
-        if status_led is not None:
-            status_led.on()
+        status_led.on()
 
         # check for turn off
         if power_button.is_pressed:
@@ -401,10 +394,7 @@ def main()->None:
 
             if power_button.is_pressed:
                 print('Program switched off with power button')
-
-                if status_led is not None:
-                    status_led.on()
-
+                status_led.on()
                 exit()
             else:
                 pi_state = 'running'
@@ -412,8 +402,7 @@ def main()->None:
                 while blinking:
                     pass 
 
-                if status_led is not None:
-                    status_led.on()
+                status_led.on()
 
         sleep(1)
 
@@ -424,8 +413,7 @@ try:
     while blinking:
         pass
 
-    if status_led is not None:
-        status_led.on()
+    status_led.on()
 
     # wait until power button is let go
     while power_button.is_pressed:
@@ -435,9 +423,7 @@ try:
 
 except KeyboardInterrupt:
     print('Running program stopped by keyboard interrupt')
-
-    if status_led is not None:
-        status_led.off()
+    status_led.off()
 
 finally:
     if motor is not None:
