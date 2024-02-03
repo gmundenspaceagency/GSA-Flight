@@ -1,11 +1,13 @@
 import matplotlib.pyplot as plt
+import sys
+sys.path.append('..')
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
-from gyroscope import GYRO
+from gsa_components.mpu6050 import Mpu6050
 import numpy as np
 import math
 
-gyro = GYRO()
+gyro = Mpu6050()
 
 def rotation_matrix(axis, theta):
     axis = np.asarray(axis)

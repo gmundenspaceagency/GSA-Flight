@@ -98,7 +98,7 @@ def initialize_light2n3()->Optional[Bh1750]:
 def initialize_ads1115()->Optional[ADS1115]:
     try:
         ads1115 = ADS1115()
-        ads1115.read_adc(1, gain=1)
+        ads1115.read_adc(0, gain=1)
     except Exception as error:
         ads1115 = None
         print('Problem with A/D-Converter: ' + str(error))
