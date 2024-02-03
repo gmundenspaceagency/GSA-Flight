@@ -1,6 +1,0 @@
-gpiozero
-picamera2
-pimoroni-bme280
-Adafruit-ADS1x15
-smbus2
-
