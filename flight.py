@@ -1,6 +1,8 @@
+import os
 import time
 import smbus
 import datetime
+import picamera
 import RPi.GPIO as GPIO
 
 from typing import Optional
@@ -11,8 +13,6 @@ from time import sleep, perf_counter
 # pimoroni-bme280 1.0.0
 from bme280 import BME280
 from Adafruit_ADS1x15 import ADS1115
-from picamera2.encoders import H264Encoder
-from picamera2 import Picamera2, Preview
 from gsa_components.mpu6050.mpu6050 import Mpu6050
 from gsa_components.bh1750.bh1750 import Bh1750
 from gsa_components.motor import Motor
@@ -151,14 +151,22 @@ def initialize_guenther()->Optional[Rak4200]:
         print('Problem with guenther: ' + str(error))
     
     return guenther
-        
+
+def initialize_camera()->Optional[picamera.PiCamera]:
+    try:
+        camera = picamera.PiCamera()
+    except Exception as error:
+        camera = None
+        print('Problem with camera: ' + str(error))
+    
+    return camera
 try:
     GPIO.setmode(GPIO.BCM)
     power_light2 = 17
     power_light3 = 27
     GPIO.setup(17, GPIO.OUT, initial=0)
     GPIO.setup(27, GPIO.OUT, initial=0)
-    power_button = Button(22, pull_up=True)
+    power_button = Button(24, pull_up=True)
     
     # every sensor is in a try-block so the program will still work when one of the sensors fails on launch
     light1 = initialize_light1()
@@ -168,16 +176,7 @@ try:
     mpu6050 = initialize_mpu6050()
     motor = initialize_motor()
     guenther = initialize_guenther()
-    
-    try:
-        picam2 = Picamera2()
-        video_config = picam2.create_video_configuration(main={"size": (1920, 1080)})
-        picam2.configure(video_config)
-        encoder = H264Encoder(bitrate=1000000)
-        output = '/home/gsa202324/Desktop/test.h264'
-    except Exception as error:
-        print('Problem with camera:' + str(error))
-           
+    camera = initialize_camera()    
 except KeyboardInterrupt:
     print('Initializing aborted by keyboard interrupt')
     GPIO.cleanup()
@@ -224,7 +223,6 @@ luminance1 = luminance2 = luminance3 = None
 
 def rotation_mechanism() -> None:
     global luminance1, luminance2, luminance3
-    
 
     while pi_state == 'running' or pi_state == 'shutting down':            
         try:  
@@ -270,12 +268,13 @@ def rotation_mechanism() -> None:
             print('Error in rotation mechanism: ' + str(error))
 
 def main()->None:
-    global pi_state, ads1115, bme280, mpu6050, guenther
+    global pi_state, ads1115, bme280, mpu6050, guenther, camera
 
     start_time = datetime.datetime.now()
+    start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
     start_perf = round(perf_counter() * 1000)
     # TODO: realistische iteration time
-    max_iteration_time = 2000
+    max_iteration_time = 1000
     timestamps = []
     pressures = []
     temperatures = []
@@ -287,6 +286,19 @@ def main()->None:
     mpu6050_accelerations = []
     rotationangles = []
     
+    log_dir = f'/home/gsa202324/GSA-Flight/log/flightlog_{start_time_str}/'
+    os.mkdir(log_dir)
+    output = log_dir + 'flight-video.h264'
+    resolution = (1920, 1080)
+    
+    def start_recording():
+        if camera is not None:
+            camera.resolution = resolution
+            camera.start_preview()
+            camera.start_recording(output)
+    
+    start_recording()
+    
     Thread(target=rotation_mechanism, args=()).start()
     sleep(1)
     
@@ -295,6 +307,11 @@ def main()->None:
         timestamps.append(timestamp)
         status_led.off()
         
+        if camera is None:
+            # try to contact sensor again
+            camera = initialize_camera()
+            start_recording()   
+            
         if len(timestamps) > 1:
             time_difference = timestamp - timestamps[-2]
             
@@ -309,7 +326,6 @@ def main()->None:
             print(f'Solar panel voltage: {solar_voltage}V')
         except Exception as error:
             # try to contact sensor again
-            print(str(error))
             ads1115 = initialize_ads1115()
         
         # X means they were not set yet
@@ -373,34 +389,9 @@ def main()->None:
             guenther.send(f'{CANSAT_ID};{timestamp};{pressure};{temperature}')
         except Exception as error:
             # try to contact transceiver again
-            print(str(error))
             guenther = initialize_guenther()
         
-        status_led.on()
-
-        # check for turn off
-        if power_button.is_pressed:
-            pi_state = 'shutting down'
-            
-            while blinking:
-                pass
-            
-            # fast flashing telling pi is about to shut down
-            Thread(target=blink_onboard, args=(0.05, 'shutting down')).start()
-            sleep(1)
-
-            if power_button.is_pressed:
-                print('Program switched off with power button')
-                status_led.on()
-                exit()
-            else:
-                pi_state = 'running'
-
-                while blinking:
-                    pass 
-
-                status_led.on()
-
+        status_led.on()        
         sleep(1)
 
 try:
@@ -426,9 +417,19 @@ finally:
     if motor is not None:
         motor.set_angle(0)
     
+    if camera is not None:
+        try:
+            camera.stop_recording()
+            camera.stop_preview()
+        except (KeyError, picamera.exc.PiCameraNotRecording):
+            pass
+        
     GPIO.cleanup()
     pi_state = 'off'
     currentTime = datetime.datetime.now()
     currentTimeStr = currentTime.strftime("%H:%M:%S")
-    guenther.send('(Info) CanSat program finished at: ' + currentTimeStr) 
+    
+    if guenther is not None:
+        guenther.send('(Info) CanSat program finished at: ' + currentTimeStr)
+        
     print('bye bye')
