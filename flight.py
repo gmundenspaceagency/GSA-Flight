@@ -91,7 +91,7 @@ def initialize_light2n3()->Optional[Bh1750]:
         light2.luminance(Bh1750.ONCE_LOWRES)
     except Exception as error:
         light2 = None
-        print('Problem with light sensor 2: ' + str(error))
+        print('Problem with light sensor 2+3 or Multiplexer: ' + str(error))
     
     return light2
 
@@ -121,7 +121,7 @@ def initialize_mpu6050()->Optional[Mpu6050]:
         mpu6050.get_scaled_acceleration()
     except Exception as error:
         mpu6050 = None
-        print('Problem with mpu6050scope: ' + str(error))
+        print('Problem with gyroscope: ' + str(error))
     
     return mpu6050
 
