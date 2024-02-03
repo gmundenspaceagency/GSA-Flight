@@ -309,7 +309,6 @@ def main()->None:
             print(f'Solar panel voltage: {solar_voltage}V')
         except Exception as error:
             # try to contact sensor again
-            print(str(error))
             ads1115 = initialize_ads1115()
         
         # X means they were not set yet
@@ -373,7 +372,6 @@ def main()->None:
             guenther.send(f'{CANSAT_ID};{timestamp};{pressure};{temperature}')
         except Exception as error:
             # try to contact transceiver again
-            print(str(error))
             guenther = initialize_guenther()
         
         status_led.on()
