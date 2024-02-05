@@ -59,3 +59,5 @@ if is_device_connected(device_path):
         print(f"Error: {e}")
 else:
     print(f"Device not connected at {device_path}")
+
+    #ÄNDERUNG
