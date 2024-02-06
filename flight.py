@@ -47,11 +47,11 @@ Allgemeine ToDos:
 -only activate motor on the way down
 """
 
-CANSAT_ID = '69xd'
+CANSAT_ID = "69xd"
 BUS = smbus.SMBus(1)
 channel_array=[0b00000001,0b00000010,0b00000100,0b00001000,0b00010000,0b00100000,0b01000000,0b10000000]
-pi_state = 'initializing'
-print('Pi is initializing...')
+pi_state = "initializing"
+print("Pi is initializing...")
 
 # is True when a second thread with the blink_onboard function is running
 blinking = False
@@ -74,10 +74,10 @@ try:
         blinking = False
 
     # blinking to show pi is initializing
-    Thread(target=blink_onboard, args=(0.5, 'initializing')).start()
+    Thread(target=blink_onboard, args=(0.5, "initializing")).start()
 except Exception as error:
     status_led = None
-    print('Warning: Onboard LED could not be initialized: ' + str(error))
+    print("Warning: Onboard LED could not be initialized: " + str(error))
 
 # initialize sensors
 def initialize_light1()->Optional[Bh1750]:
@@ -86,7 +86,7 @@ def initialize_light1()->Optional[Bh1750]:
         light1.luminance(Bh1750.CONT_LOWRES)
     except Exception as error:
         light1 = None
-        print('Problem with light sensor 1: ' + str(error))
+        print("Problem with light sensor 1: " + str(error))
     
     return light1
 
@@ -97,7 +97,7 @@ def initialize_light2n3()->Optional[Bh1750]:
         light2.luminance(Bh1750.CONT_LOWRES)
     except Exception as error:
         light2 = None
-        print('Problem with light sensor 2: ' + str(error))
+        print("Problem with light sensor 2: " + str(error))
     
     return light2
 
@@ -107,7 +107,7 @@ def initialize_ads1115()->Optional[ADS1115]:
         ads1115.read_adc(1, gain=1)
     except Exception as error:
         ads1115 = None
-        print('Problem with A/D-Converter: ' + str(error))
+        print("Problem with A/D-Converter: " + str(error))
     
     return ads1115
 
@@ -117,7 +117,7 @@ def initialize_bme280()->Optional[BME280]:
         bme280.get_temperature()
     except Exception as error:
         bme280 = None
-        print('Problem with BME280-Sensor: ' + str(error))
+        print("Problem with BME280-Sensor: " + str(error))
     
     return bme280
  
@@ -127,7 +127,7 @@ def initialize_mpu6050()->Optional[Mpu6050]:
         mpu6050.get_scaled_acceleration()
     except Exception as error:
         mpu6050 = None
-        print('Problem with mpu6050scope: ' + str(error))
+        print("Problem with mpu6050scope: " + str(error))
     
     return mpu6050
 
@@ -140,7 +140,7 @@ def initialize_motor()->Optional[Motor]:
         # motor.set_angle(0)
     except Exception as error:
         motor = None
-        print('Problem with motor: ' + str(error))
+        print("Problem with motor: " + str(error))
     
     return motor
 
@@ -154,7 +154,7 @@ def initialize_guenther()->Optional[Rak4200]:
         guenther.start()
     except Exception as error:
         guenther = None
-        print('Problem with guenther: ' + str(error))
+        print("Problem with guenther: " + str(error))
     
     return guenther
         
@@ -180,49 +180,49 @@ try:
         video_config = picam2.create_video_configuration(main={"size": (1920, 1080)})
         picam2.configure(video_config)
         encoder = H264Encoder(bitrate=1000000)
-        output = '/home/gsa202324/Desktop/test.h264'
+        output = "/home/gsa202324/Desktop/test.h264"
     except Exception as error:
-        print('Problem with camera:' + str(error))
+        print("Problem with camera:" + str(error))
            
 except KeyboardInterrupt:
-    print('Initializing aborted by keyboard interrupt')
+    print("Initializing aborted by keyboard interrupt")
     GPIO.cleanup()
     exit()
 
 try:
-    pi_state = 'ready'
-    print('Pi is ready, hold start button to start program')
+    pi_state = "ready"
+    print("Pi is ready, hold start button to start program")
 
     # wait until the second thread with the blink_onboard function has stopped
     while blinking:
         pass
 
     # blinking to show the pi is ready
-    Thread(target=blink_onboard, args=(0.1, 'ready')).start()
+    Thread(target=blink_onboard, args=(0.1, "ready")).start()
 
     # wait for 1s button press
     while True:
         if power_button.is_pressed:
-            pi_state = 'starting'
+            pi_state = "starting"
 
             while blinking:
                 pass
 
             # fast flashing telling you should keep holding the button
-            Thread(target=blink_onboard, args=(0.05, 'starting')).start()
+            Thread(target=blink_onboard, args=(0.05, "starting")).start()
             sleep(1)
 
             if power_button.is_pressed:
                 break
             else:
-                pi_state = 'ready'
+                pi_state = "ready"
 
                 while blinking:
                     pass
 
-                Thread(target=blink_onboard, args=(0.5, 'ready')).start()
+                Thread(target=blink_onboard, args=(0.5, "ready")).start()
 except KeyboardInterrupt:
-    print('Program stopped in ready state by keyboard interrupt')
+    print("Program stopped in ready state by keyboard interrupt")
     GPIO.cleanup()
     exit()
 
@@ -232,7 +232,7 @@ def rotation_mechanism() -> None:
     global luminance1, luminance2, luminance3
     
 
-    while pi_state == 'descending':            
+    while pi_state == "descending":            
         try:  
             try:
                 luminance1 = round(light1.luminance(Bh1750.CONT_LOWRES), 4)
@@ -274,7 +274,7 @@ def rotation_mechanism() -> None:
                 calculatedAngle = pidController.calculate(goal_angle, motor.current_angle)
                 motor.move_angle(calculatedAngle)
         except ValueError as error:
-            print('Error in rotation mechanism: ' + str(error))
+            print("Error in rotation mechanism: " + str(error))
 
 def main()->None:
     global pi_state, ads1115, bme280, mpu6050, guenther
@@ -293,279 +293,223 @@ def main()->None:
     rotationrates = []
     mpu6050_accelerations = []
     rotationangles = []
-    is_falling = False
     start_altitude = 266.0
     
     #Thread(target=rotation_mechanism, args=()).start()
-    
     # TODO: vor dem flug die onboard led sicher machen (falls verbindung weg) oder ganz removen
-    while True:
-        if pi_state == "ground_level":
-            #make sure that the motor thread is not running
-            rotation_thread().join()
+    #make sure that the motor thread is not running
+    rotation_thread.join()
+    bme280.update_sensor()
+    pressure = round(float(bme280.pressure), 2)
+    pressures.append(pressure)
+    altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
+    start_altitude = altitude
+    altitudes.append(altitude)
+
+    while pi_state == "ground_level":
+        bme280.update_sensor()
+        pressure = round(float(bme280.pressure), 2)
+        pressures.append(pressure)
+        altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
+        altitudes.append(altitude)
+        #TODO: send checks to guenther
+
+        if altitude > start_altitude + 10:
+            #TODO: also check Gps data
+
+            pi_state = "ascending"
+        
+        sleep(1)
+
+    while pi_state == "ascending":
+        timestamp = round(perf_counter() * 1000 - start_perf)
+        timestamps.append(timestamp)
+        status_led.off()
+        
+        if len(timestamps) > 1:
+            time_difference = timestamp - timestamps[-2]
+            
+            if time_difference > max_iteration_time:
+                print(f"Warning: Single iteration in descent took more than {max_iteration_time}ms (took {time_difference}ms)")
+        
+        # X means they were not set yet
+        pressure = "X"
+        temperature = "X"
+        
+        try:
             bme280.update_sensor()
             pressure = round(float(bme280.pressure), 2)
             pressures.append(pressure)
+            temperature = round(float(bme280.temperature), 2)
+            temperatures.append(temperature)
+            humidity = round(float(bme280.humidity) / 100, 2)
+            humidities.append(humidity)
             altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
-            start_altitude = altitude
             altitudes.append(altitude)
-            while True:
-                bme280.update_sensor()
-                pressure = round(float(bme280.pressure), 2)
-                pressures.append(pressure)
-                altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
-                altitudes.append(altitude)
-                if altitude > start_altitude + 10:
-                    pi_state = "ascending"
-                    break
-            if power_button.is_pressed:
-                    pi_state = 'shutting down'
-                    
-                    while blinking:
-                        pass
-                    
-                    # fast flashing telling pi is about to shut down
-                    Thread(target=blink_onboard, args=(0.05, 'shutting down')).start()
-                    sleep(1)
+            print(f"Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%")
 
-                    if power_button.is_pressed:
-                        print('Program switched off with power button')
+            # speed can only be calculated after 2 height measures
+            if len(timestamps) > 1:
+                avg_over = 5
+                avg_vertical_speed = round(sum(vertical_speeds[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
+                vertical_speed = round((altitude - altitudes[-2]) / time_difference * 1000, 2)
+                vertical_speeds.append(vertical_speed)
+                print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
-                        if status_led is not None:
-                            status_led.on()
+                if avg_vertical_speed < -2:
+                    print("CanSat has started falling")
+                    pi_state = "descending"        
 
-                        exit()
-                    else:
-                        pi_state = 'running'
+            # acceleration can only be calculated after 3 height measures
+            if len(timestamps) > 2:
+                avg_vertical_acceleration = round(sum(vertical_accelerations[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
 
-                        while blinking:
-                            pass 
+                vertical_acceleration = round((vertical_speed - vertical_speeds[-2]) / time_difference, 3)
+                vertical_accelerations.append(vertical_acceleration)
 
-                        if status_led is not None:
-                            status_led.on()
-            sleep(1)
-        if pi_state == "ascending":
-            while True:
-                timestamp = round(perf_counter() * 1000 - start_perf)
-                timestamps.append(timestamp)
-
-                if status_led is not None:
-                    status_led.off()
-                
-                if len(timestamps) > 1:
-                    time_difference = timestamp - timestamps[-2]
-                    
-                    if time_difference > max_iteration_time:
-                        print(f'Warning: Single iteration in descent took more than {max_iteration_time}ms (took {time_difference}ms)')
-                
-                # X means they were not set yet
-                pressure = 'X'
-                temperature = 'X'
-                
-                try:
-                    bme280.update_sensor()
-                    pressure = round(float(bme280.pressure), 2)
-                    pressures.append(pressure)
-                    temperature = round(float(bme280.temperature), 2)
-                    temperatures.append(temperature)
-                    humidity = round(float(bme280.humidity) / 100, 2)
-                    humidities.append(humidity)
-                    altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
-                    altitudes.append(altitude)
-
-                    print(f'Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%')
-
-                    # speed can only be calculated after 2 height measures
-                    if len(timestamps) > 1:
-                        avg_over = 5
-
-                        avg_vertical_speed = round(sum(vertical_speeds[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
-                        vertical_speed = round((altitude - altitudes[-2]) / time_difference * 1000, 2)
-                        vertical_speeds.append(vertical_speed)
-
-                        print(f'Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s')
-
-                        if vertical_speed < -2:
-                            print('CanSat has started falling')
-                            pi_state = 'descending'
-                            break
-                            
-                            
-
-                    # acceleration can only be calculated after 3 height measures
-                    if len(timestamps) > 2:
-                        avg_vertical_acceleration = round(sum(vertical_accelerations[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
-
-                        vertical_acceleration = round((vertical_speed - vertical_speeds[-2]) / time_difference, 3)
-                        vertical_accelerations.append(vertical_acceleration)
-
-                        print(f'Acceleration: {vertical_acceleration}m/s^2, Average acceleration: {avg_vertical_acceleration}m/s^2')
-                except Exception as error:
-                    # try to contact sensor again
-                    bme280 = initialize_bme280()
+                print(f"Acceleration: {vertical_acceleration}m/s^2, Average acceleration: {avg_vertical_acceleration}m/s^2")
+        except Exception as error:
+            # try to contact sensor again
+            bme280 = initialize_bme280()
+    
+        try:
+            gyro_data = mpu6050.get_scaled_gyroscope()
+            rotationrates.append(gyro_data)
+            rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
+            acceleration = mpu6050.get_scaled_acceleration()
+            mpu6050_accelerations.append(acceleration)
+            acceleration_x, acceleration_y, acceleration_z = acceleration
+            rotation = mpu6050.get_rotation(*acceleration)
+            rotationangles.append(rotation)
+            rotation_x, rotation_y = rotation
             
-                try:
-                    gyro_data = mpu6050.get_scaled_gyroscope()
-                    rotationrates.append(gyro_data)
-                    rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
-                    acceleration = mpu6050.get_scaled_acceleration()
-                    mpu6050_accelerations.append(acceleration)
-                    acceleration_x, acceleration_y, acceleration_z = acceleration
-                    rotation = mpu6050.get_rotation(*acceleration)
-                    rotationangles.append(rotation)
-                    rotation_x, rotation_y = rotation
-                    
-                    print(f'Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z')
-                    print(f'Static Acceleration (g): {acceleration_x}x {acceleration_y}y {acceleration_z}z')
-                    print(f'Angle of rotation (°): {rotation_x}x {rotation_y}y')
-                except Exception as error:
-                    # try to contact sensor again
-                    mpu6050 = initialize_mpu6050()
-                
-                try:
-                    guenther.send(f'{CANSAT_ID};{timestamp};{pressure};{temperature}')
-                except Exception as error:
-                    # try to contact transceiver again
-                    print(str(error))
-                    guenther = initialize_guenther()
-                
-                if status_led is not None:
-                    status_led.on()
-                sleep(1)
+            print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
+            print(f"Static Acceleration (g): {acceleration_x}x {acceleration_y}y {acceleration_z}z")
+            print(f"Angle of rotation (°): {rotation_x}x {rotation_y}y")
+        except Exception as error:
+            # try to contact sensor again
+            mpu6050 = initialize_mpu6050()
+        
+        try:
+            guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{temperature}")
+        except Exception as error:
+            # try to contact transceiver again
+            print(str(error))
+            guenther = initialize_guenther()
+        
+        if status_led is not None:
+            status_led.on()
+        sleep(1)
 
+    rotation_thread = Thread(target=rotation_mechanism, args=())
+    rotation_thread.start()
+    while pi_state == "descending":
+        timestamp = round(perf_counter() * 1000 - start_perf)
+        timestamps.append(timestamp)
 
-        if pi_state == 'descending':
-            rotation_thread = Thread(target=rotation_mechanism, args=())
-            rotation_thread.start()
-            while True:
-                timestamp = round(perf_counter() * 1000 - start_perf)
-                timestamps.append(timestamp)
-
-                if status_led is not None:
-                    status_led.off()
-                
-                if len(timestamps) > 1:
-                    time_difference = timestamp - timestamps[-2]
-                    
-                    if time_difference > max_iteration_time:
-                        print(f'Warning: Single iteration in descent took more than {max_iteration_time}ms (took {time_difference}ms)')
-
-                print(f'Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}')
-
-                try:
-                    ads1115_value = ads1115.read_ads1115(1, gain=1)
-                    solar_voltage = round(4.096 / 32767 * ads1115_value, 3)
-                    print(f'Solar panel voltage: {solar_voltage}V')
-                except Exception as error:
-                    # try to contact sensor again
-                    ads1115 = initialize_ads1115()
-                
-                # X means they were not set yet
-                pressure = 'X'
-                temperature = 'X'
-                
-                try:
-                    bme280.update_sensor()
-                    pressure = round(float(bme280.pressure), 2)
-                    pressures.append(pressure)
-                    temperature = round(float(bme280.temperature), 2)
-                    temperatures.append(temperature)
-                    humidity = round(float(bme280.humidity) / 100, 2)
-                    humidities.append(humidity)
-                    altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
-                    altitudes.append(altitude)
-
-                    print(f'Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%')
-
-                    # speed can only be calculated after 2 height measures
-                    if len(timestamps) > 1:
-                        avg_over = 5
-
-                        avg_vertical_speed = round(sum(vertical_speeds[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
-                        vertical_speed = round((altitude - altitudes[-2]) / time_difference * 1000, 2)
-                        vertical_speeds.append(vertical_speed)
-
-                        print(f'Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s')
-
-                        if altitude < start_altitude + 10:
-                            print('CanSat has reached ground level')
-                            pi_state = 'ground_level'
-                            break
-                            
-                            
-
-                    # acceleration can only be calculated after 3 height measures
-                    if len(timestamps) > 2:
-                        avg_vertical_acceleration = round(sum(vertical_accelerations[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
-
-                        vertical_acceleration = round((vertical_speed - vertical_speeds[-2]) / time_difference, 3)
-                        vertical_accelerations.append(vertical_acceleration)
-
-                        print(f'Acceleration: {vertical_acceleration}m/s^2, Average acceleration: {avg_vertical_acceleration}m/s^2')
-                except Exception as error:
-                    # try to contact sensor again
-                    bme280 = initialize_bme280()
+        if status_led is not None:
+            status_led.off()
+        
+        if len(timestamps) > 1:
+            time_difference = timestamp - timestamps[-2]
             
-                try:
-                    gyro_data = mpu6050.get_scaled_gyroscope()
-                    rotationrates.append(gyro_data)
-                    rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
-                    acceleration = mpu6050.get_scaled_acceleration()
-                    mpu6050_accelerations.append(acceleration)
-                    acceleration_x, acceleration_y, acceleration_z = acceleration
-                    rotation = mpu6050.get_rotation(*acceleration)
-                    rotationangles.append(rotation)
-                    rotation_x, rotation_y = rotation
+            if time_difference > max_iteration_time:
+                print(f"Warning: Single iteration in descent took more than {max_iteration_time}ms (took {time_difference}ms)")
+
+        print(f"Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}")
+
+        try:
+            ads1115_value = ads1115.read_ads1115(1, gain=1)
+            solar_voltage = round(4.096 / 32767 * ads1115_value, 3)
+            print(f"Solar panel voltage: {solar_voltage}V")
+        except Exception as error:
+            # try to contact sensor again
+            ads1115 = initialize_ads1115()
+        
+        # X means they were not set yet
+        pressure = "X"
+        temperature = "X"
+        
+        try:
+            bme280.update_sensor()
+            pressure = round(float(bme280.pressure), 2)
+            pressures.append(pressure)
+            temperature = round(float(bme280.temperature), 2)
+            temperatures.append(temperature)
+            humidity = round(float(bme280.humidity) / 100, 2)
+            humidities.append(humidity)
+            altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
+            altitudes.append(altitude)
+
+            print(f"Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%")
+
+            # speed can only be calculated after 2 height measures
+            if len(timestamps) > 1:
+                avg_over = 5
+
+                avg_vertical_speed = round(sum(vertical_speeds[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
+                vertical_speed = round((altitude - altitudes[-2]) / time_difference * 1000, 2)
+                vertical_speeds.append(vertical_speed)
+
+                print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
+
+                if altitude < start_altitude + 10:
+                    print("CanSat has reached ground level")
+                    pi_state = "landed"
                     
-                    print(f'Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z')
-                    print(f'Static Acceleration (g): {acceleration_x}x {acceleration_y}y {acceleration_z}z')
-                    print(f'Angle of rotation (°): {rotation_x}x {rotation_y}y')
-                except Exception as error:
-                    # try to contact sensor again
-                    mpu6050 = initialize_mpu6050()
-                
-                try:
-                    guenther.send(f'{CANSAT_ID};{timestamp};{pressure};{temperature}')
-                except Exception as error:
-                    # try to contact transceiver again
-                    print(str(error))
-                    guenther = initialize_guenther()
-                
-                if status_led is not None:
-                    status_led.on()
-
-                # check for turn off
-                if power_button.is_pressed:
-                    pi_state = 'shutting down'
                     
-                    while blinking:
-                        pass
                     
-                    # fast flashing telling pi is about to shut down
-                    Thread(target=blink_onboard, args=(0.05, 'shutting down')).start()
-                    sleep(1)
 
-                    if power_button.is_pressed:
-                        print('Program switched off with power button')
+            # acceleration can only be calculated after 3 height measures
+            if len(timestamps) > 2:
+                avg_vertical_acceleration = round(sum(vertical_accelerations[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
 
-                        if status_led is not None:
-                            status_led.on()
+                vertical_acceleration = round((vertical_speed - vertical_speeds[-2]) / time_difference, 3)
+                vertical_accelerations.append(vertical_acceleration)
 
-                        exit()
-                    else:
-                        pi_state = 'running'
+                print(f"Acceleration: {vertical_acceleration}m/s^2, Average acceleration: {avg_vertical_acceleration}m/s^2")
+        except Exception as error:
+            # try to contact sensor again
+            bme280 = initialize_bme280()
+    
+        try:
+            gyro_data = mpu6050.get_scaled_gyroscope()
+            rotationrates.append(gyro_data)
+            rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
+            acceleration = mpu6050.get_scaled_acceleration()
+            mpu6050_accelerations.append(acceleration)
+            acceleration_x, acceleration_y, acceleration_z = acceleration
+            rotation = mpu6050.get_rotation(*acceleration)
+            rotationangles.append(rotation)
+            rotation_x, rotation_y = rotation
+            
+            print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
+            print(f"Static Acceleration (g): {acceleration_x}x {acceleration_y}y {acceleration_z}z")
+            print(f"Angle of rotation (°): {rotation_x}x {rotation_y}y")
+        except Exception as error:
+            # try to contact sensor again
+            mpu6050 = initialize_mpu6050()
+        
+        try:
+            guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{temperature}")
+        except Exception as error:
+            # try to contact transceiver again
+            print(str(error))
+            guenther = initialize_guenther()
+        
+        if status_led is not None:
+            status_led.on()
 
-                        while blinking:
-                            pass 
+    while pi_state == "landed":
+        #TODO: add a landed mode
+        print("landed")
+        sleep(1)
 
-                        if status_led is not None:
-                            status_led.on()
-
-                sleep(1)
+            
 
 try:
-    pi_state = 'running'
-    print('Program is running')
+    pi_state = "ground_level"
+    print("Program is running")
 
     while blinking:
         pass
@@ -580,7 +524,7 @@ try:
     main()
 
 except KeyboardInterrupt:
-    print('Running program stopped by keyboard interrupt')
+    print("Running program stopped by keyboard interrupt")
 
     if status_led is not None:
         status_led.off()
@@ -590,8 +534,8 @@ finally:
         motor.set_angle(0)
     
     GPIO.cleanup()
-    pi_state = 'off'
+    pi_state = "off"
     currentTime = datetime.datetime.now()
     currentTimeStr = currentTime.strftime("%H:%M:%S")
-    guenther.send('(Info) CanSat program finished at: ' + currentTimeStr) 
-    print('bye bye')
+    guenther.send("(Info) CanSat program finished at: " + currentTimeStr) 
+    print("bye bye")
