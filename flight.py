@@ -1,6 +1,7 @@
 import os
 import time
 import smbus
+import keyboard
 import datetime
 import picamera
 import RPi.GPIO as GPIO
@@ -312,7 +313,7 @@ def main()->None:
         humidity = round(float(bme280.humidity) / 100, 2)
         logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},,,,,,,,,,,,,,,None,{pi_state}")
 
-        if altitude > start_altitude + 10:
+        if altitude > start_altitude + 10 or keyboard.is_pressed('a'):
             #TODO: also check Gps data
             pi_state = "ascending"
         
@@ -359,7 +360,7 @@ def main()->None:
                 vertical_speeds.append(vertical_speed)
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
-                if avg_vertical_speed < -2:
+                if avg_vertical_speed < -2 or keyboard.is_pressed('d'):
                     pi_state = "descending"        
 
             # acceleration can only be calculated after 3 height measures
@@ -458,7 +459,7 @@ def main()->None:
 
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
-                if altitude < start_altitude + 10:
+                if altitude < start_altitude + 10 or keyboard.is_pressed('l'):
                     pi_state = "landed"
 
             # acceleration can only be calculated after 3 height measures
