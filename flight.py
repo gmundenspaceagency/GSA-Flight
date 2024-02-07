@@ -26,7 +26,6 @@ Allgemeine ToDos:
 - GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
     - GPS Höhendaten mit dem bme280280 Daten abgleichen
 - Temperaturdaten von GYRO und bme280280 abgleichen
-- Kameraaufnahmen machen
 - Detailliertes Flight-Log erstellen (Flight_19d-10m-2024y_17h-35m-01s.json)
     - Für jeden timestap ALLE DATEN die wir überhaupt nur bekommen können speichern
 - Error handling
