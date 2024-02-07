@@ -284,16 +284,18 @@ def main()->None:
     rotationangles = []
     start_altitude = 266.0
     
-    log_dir = f'/home/gsa202324/GSA-Flight/log/flightlog_{start_time_str}/'
+    log_dir = f"/home/gsa202324/GSA-Flight/log/flightlog_{start_time_str}/"
     os.mkdir(log_dir)
-    output = log_dir + 'flight-video.h264'
+    video_output = log_dir + "flight-video.h264"
     resolution = (1920, 1080)
+    logfile_path = log_dir + "datalog.csv"
+    logfile = open(logfile_path, "w")
     
     def start_recording():
         if camera is not None:
             camera.resolution = resolution
             camera.start_preview()
-            camera.start_recording(output)
+            camera.start_recording(video_output)
     
     bme280.update_sensor()
     pressure = round(float(bme280.pressure), 2)
