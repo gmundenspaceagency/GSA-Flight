@@ -304,6 +304,8 @@ def main()->None:
     altitudes.append(altitude)
 
     while pi_state == "ground_level":
+        timestamp = round(perf_counter() * 1000 - start_perf)
+        timestamps.append(timestamp)
         bme280.update_sensor()
         pressure = round(float(bme280.pressure), 2)
         pressures.append(pressure)
@@ -314,7 +316,11 @@ def main()->None:
         if altitude > start_altitude + 10:
             #TODO: also check Gps data
             pi_state = "ascending"
-        
+        try:
+            guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{0.0}")
+        except Exception as error:
+            # try to contact transceiver again
+            guenther = initialize_guenther()
         sleep(1)
 
     while pi_state == "ascending":
