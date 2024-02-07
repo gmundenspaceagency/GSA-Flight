@@ -296,10 +296,10 @@ def main()->None:
 
     logfile_path = log_dir + "datalog.csv"
 
-    with open(logfile_path, "w") as logfile:
+    with open(logfile_path, "a") as logfile:
         logfile.write(f"Teamname: Gmunden Space Agency, CanSat Flight Logfile at: {start_time}\n")
         logfile.write("\n")
-        logfile.write("Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),Errors,Status")
+        logfile.write("Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),Errors,Status\n")
 
     while pi_state == "ground_level":
         status_led.off()
@@ -312,8 +312,8 @@ def main()->None:
         temperature = round(float(bme280.temperature), 2)
         humidity = round(float(bme280.humidity) / 100, 2)
 
-        with open(logfile_path, "w") as logfile:
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},,,,,,,,,,,,,,,None,{pi_state}")
+        with open(logfile_path, "a") as logfile:
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},,,,,,,,,,,,,,,None,{pi_state}\n")
 
         if altitude > start_altitude + 10 or len(timestamps) > 5:
             #TODO: also check Gps data
@@ -397,8 +397,8 @@ def main()->None:
             # try to contact transceiver again
             guenther = initialize_guenther()
 
-        with open(logfile_path, "w") as logfile:
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,{';'.join(errors)},{pi_state}")
+        with open(logfile_path, "a") as logfile:
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,{';'.join(errors)},{pi_state}\n")
         
         status_led.on()
         sleep(1)
@@ -498,8 +498,8 @@ def main()->None:
             # try to contact transceiver again
             guenther = initialize_guenther()
         
-        with open(logfile_path, "w") as logfile:
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,{';'.join(errors)},{pi_state}")
+        with open(logfile_path, "a") as logfile:
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,{';'.join(errors)},{pi_state}\n")
         
         status_led.on()
         sleep(1)
@@ -520,9 +520,9 @@ def main()->None:
 
         #TODO: add a landed mode
         print("landed")
-        
-        with open(logfile_path, "w") as logfile:
-            logfile.write(f"{timestamp},,,,,,,,,,,,,,,,,,,None,{pi_state}")
+
+        with open(logfile_path, "a") as logfile:
+            logfile.write(f"{timestamp},,,,,,,,,,,,,,,,,,,None,{pi_state}\n")
 
         try:
             guenther.send(f"(Info) Back on the ground again")
