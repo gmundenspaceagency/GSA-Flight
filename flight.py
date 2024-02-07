@@ -271,25 +271,17 @@ def main()->None:
     start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
     start_perf = round(perf_counter() * 1000)
     # TODO: realistische iteration time
-    max_iteration_time = 1000
     timestamps = []
-    pressures = []
-    temperatures = []
-    humidities = []
     altitudes = []
     vertical_speeds = []
     vertical_accelerations = []
-    rotationrates = []
-    mpu6050_accelerations = []
-    rotationangles = []
+    max_iteration_time = 1000
     start_altitude = 266.0
     
     log_dir = f"/home/gsa202324/GSA-Flight/log/flightlog_{start_time_str}/"
     os.mkdir(log_dir)
     video_output = log_dir + "flight-video.h264"
     resolution = (1920, 1080)
-    logfile_path = log_dir + "datalog.csv"
-    logfile = open(logfile_path, "w")
     
     def start_recording():
         if camera is not None:
@@ -299,54 +291,62 @@ def main()->None:
     
     bme280.update_sensor()
     pressure = round(float(bme280.pressure), 2)
-    pressures.append(pressure)
     altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
     start_altitude = altitude
-    altitudes.append(altitude)
+
+    logfile_path = log_dir + "datalog.csv"
+    logfile = open(logfile_path, "w")
+    logfile.write(f"Teamname: Gmunden Space Agency, CanSat Flight Logfile at: {start_time}\n")
+    logfile.write("\n")
+    logfile.write("Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),Errors,Status")
 
     while pi_state == "ground_level":
+        status_led.off()
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
         bme280.update_sensor()
         pressure = round(float(bme280.pressure), 2)
-        pressures.append(pressure)
         altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
         altitudes.append(altitude)
-        #TODO: send checks to guenther
+        temperature = round(float(bme280.temperature), 2)
+        humidity = round(float(bme280.humidity) / 100, 2)
+        logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},,,,,,,,,,,,,,,None,{pi_state}")
 
         if altitude > start_altitude + 10:
             #TODO: also check Gps data
             pi_state = "ascending"
+        
         try:
-            guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{0.0}")
+            guenther.send(f"(Info) Chilling on ground level")
         except Exception as error:
             # try to contact transceiver again
             guenther = initialize_guenther()
+        
+        status_led.on()
         sleep(1)
 
     while pi_state == "ascending":
+        status_led.off()
+        errors = []
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
-        status_led.off()
         
         if len(timestamps) > 1:
             time_difference = timestamp - timestamps[-2]
             
             if time_difference > max_iteration_time:
                 print(f"Warning: Single iteration in descent took more than {max_iteration_time}ms (took {time_difference}ms)")
+                errors.append(f"Warning: Single iteration in descent took more than {max_iteration_time}ms (took {time_difference}ms)")
         
         # X means they were not set yet
-        pressure = "X"
-        temperature = "X"
+        pressure = temperature = altitude = humidity = vertical_speed = vertical_acceleration = "X"
+        acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = "X"
         
         try:
             bme280.update_sensor()
             pressure = round(float(bme280.pressure), 2)
-            pressures.append(pressure)
             temperature = round(float(bme280.temperature), 2)
-            temperatures.append(temperature)
             humidity = round(float(bme280.humidity) / 100, 2)
-            humidities.append(humidity)
             altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
             altitudes.append(altitude)
             print(f"Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%")
@@ -360,13 +360,11 @@ def main()->None:
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
                 if avg_vertical_speed < -2:
-                    print("CanSat has started falling")
                     pi_state = "descending"        
 
             # acceleration can only be calculated after 3 height measures
             if len(timestamps) > 2:
                 avg_vertical_acceleration = round(sum(vertical_accelerations[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
-
                 vertical_acceleration = round((vertical_speed - vertical_speeds[-2]) / time_difference, 3)
                 vertical_accelerations.append(vertical_acceleration)
 
@@ -377,13 +375,10 @@ def main()->None:
     
         try:
             gyro_data = mpu6050.get_scaled_gyroscope()
-            rotationrates.append(gyro_data)
             rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
             acceleration = mpu6050.get_scaled_acceleration()
-            mpu6050_accelerations.append(acceleration)
             acceleration_x, acceleration_y, acceleration_z = acceleration
             rotation = mpu6050.get_rotation(*acceleration)
-            rotationangles.append(rotation)
             rotation_x, rotation_y = rotation
             
             print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
@@ -398,13 +393,16 @@ def main()->None:
         except Exception as error:
             # try to contact transceiver again
             guenther = initialize_guenther()
-        
+            logfile.write("Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),Errors,Status")
+
+        logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,{';'.join(errors)},{pi_state}")
         status_led.on()
         sleep(1)
 
     rotation_thread = Thread(target=rotation_mechanism, args=())
     rotation_thread.start()
     start_recording()
+    print("CanSat has started falling")
 
     while pi_state == "descending":
         timestamp = round(perf_counter() * 1000 - start_perf)
@@ -421,6 +419,10 @@ def main()->None:
             
             if time_difference > max_iteration_time:
                 print(f'Warning: Single iteration took more than {max_iteration_time}ms (took {time_difference}ms)')
+
+        # X means they were not set yet
+        pressure = temperature = altitude = humidity = vertical_speed = vertical_acceleration = luminance1 = luminance2 = luminance3 = "X"
+        acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = "X"
 
         print(f"Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}")
 
@@ -439,11 +441,8 @@ def main()->None:
         try:
             bme280.update_sensor()
             pressure = round(float(bme280.pressure), 2)
-            pressures.append(pressure)
             temperature = round(float(bme280.temperature), 2)
-            temperatures.append(temperature)
             humidity = round(float(bme280.humidity) / 100, 2)
-            humidities.append(humidity)
             altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
             altitudes.append(altitude)
 
@@ -476,13 +475,10 @@ def main()->None:
     
         try:
             gyro_data = mpu6050.get_scaled_gyroscope()
-            rotationrates.append(gyro_data)
             rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
             acceleration = mpu6050.get_scaled_acceleration()
-            mpu6050_accelerations.append(acceleration)
             acceleration_x, acceleration_y, acceleration_z = acceleration
             rotation = mpu6050.get_rotation(*acceleration)
-            rotationangles.append(rotation)
             rotation_x, rotation_y = rotation
             
             print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
@@ -498,6 +494,7 @@ def main()->None:
             # try to contact transceiver again
             guenther = initialize_guenther()
         
+        logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,{';'.join(errors)},{pi_state}")
         status_led.on()
         sleep(1)
 
@@ -510,10 +507,22 @@ def main()->None:
         except (KeyError, picamera.exc.PiCameraNotRecording):
             pass
     
+
     while pi_state == "landed":
+        timestamp = round(perf_counter() * 1000 - start_perf)
+        timestamps.append(timestamp)
+
         #TODO: add a landed mode
         print("landed")
-        sleep(1)    
+        logfile.write(f"{timestamp},,,,,,,,,,,,,,,,,,,None,{pi_state}")
+
+        try:
+            guenther.send(f"(Info) Back on the ground again")
+        except Exception as error:
+            # try to contact transceiver again
+            guenther = initialize_guenther()
+        
+        sleep(1)
 
 try:
     pi_state = "ground_level"
