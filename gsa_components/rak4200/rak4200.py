@@ -124,7 +124,6 @@ class Rak4200:
 
         # self.uart0.write(f'at+send=lorap2p:{data.encode('utf-8').hex()}\r\n') ??
         self.uart0.write(('at+send=lorap2p:' + data.encode('utf-8').hex() + '\r\n').encode())
-        print(self.uart0.readline())
 
     def receive(self:any)->Optional[dict]:
         if self.mode != 'receive':

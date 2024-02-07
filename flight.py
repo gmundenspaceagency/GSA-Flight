@@ -315,7 +315,7 @@ def main()->None:
         with open(logfile_path, "a") as logfile:
             logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},,,,,,,,,,,,,,,None,{pi_state}\n")
 
-        if altitude > start_altitude + 10 or len(timestamps) > 5:
+        if altitude > start_altitude + 10:
             #TODO: also check Gps data
             pi_state = "ascending"
         
@@ -362,7 +362,7 @@ def main()->None:
                 vertical_speeds.append(vertical_speed)
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
-                if avg_vertical_speed < -2 or len(timestamps) > 10:
+                if avg_vertical_speed < -2:
                     pi_state = "descending"        
 
             # acceleration can only be calculated after 3 height measures
@@ -462,7 +462,7 @@ def main()->None:
 
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
-                if altitude < start_altitude + 10 or len(timestamps) > 15:
+                if altitude < start_altitude + 10:
                     pi_state = "landed"
 
             # acceleration can only be calculated after 3 height measures
