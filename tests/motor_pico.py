@@ -37,14 +37,8 @@ class Motor:
         self.current_angle += angle
             
 motor = Motor(17, 16, 200, 1000)
-motor.move_angle(1)
-motor.move_angle(1)
-motor.move_angle(1)
-motor.move_angle(1)
-motor.move_angle(1)
-motor.move_angle(1)
-motor.move_angle(1)
-motor.move_angle(1)
+motor.move_angle(360)
+
 
 
 
