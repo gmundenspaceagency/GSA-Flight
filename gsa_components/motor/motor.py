@@ -39,6 +39,11 @@ class StepperMotor:
         steps = round(angle / 360 * self.step_count)  # Convert angle to steps
         self.move_steps(steps)
 
+    def set_angle(self, angle):
+        target_angle = angle % 360  # Wrap angle to 0-360
+        steps = int((target_angle - self.current_angle) / 360 * self.step_count)
+        self.move_steps(steps)
+        self.current_angle = target_angle  # Update current angle
+
     def cleanup(self):
         GPIO.cleanup()
-
