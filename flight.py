@@ -128,7 +128,7 @@ def initialize_mpu6050()->Optional[Mpu6050]:
 
 def initialize_motor()->Optional[Motor]:
     try:
-        motor = Motor(26,19,13,6,200,0.002)
+        motor = Motor(26, 19, 200, 0.002)
         # sleep(0.5)
         # motor.set_angle(270)
         # sleep(0.5)
