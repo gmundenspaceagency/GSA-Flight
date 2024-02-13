@@ -1,0 +1,29 @@
+Teamname: Gmunden Space Agency, CanSat Flight Logfile at: 2024-02-13 21:11:51.903649
+
+Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),Errors,Status
+5,964.98,25.58,0.31,409.85,,,,,,,,,,,,,,,None,ground_level
+1010,964.98,25.57,0.31,409.85,,,,,,,,,,,,,,,None,ground_level
+2026,964.98,25.56,0.31,409.85,,,,,,,,,,,,,,,None,ground_level
+3034,964.99,25.55,0.31,409.76,,,,,,,,,,,,,,,None,ground_level
+4043,964.99,25.55,0.3,409.76,,,,,,,,,,,,,,,None,ground_level
+5052,964.98,25.54,0.3,409.85,,,,,,,,,,,,,,,None,ground_level
+6060,964.98,25.53,0.3,409.85,0.0,X,X,X,X,X,X,X,,,,,,,Warning: Single iteration in descent took more than 1000ms (took 1008ms),ascending
+7242,964.95,25.5,0.3,410.11,0.22,0.0,X,X,X,X,X,X,,,,,,,Warning: Single iteration in descent took more than 1000ms (took 1182ms),ascending
+8259,964.95,25.49,0.3,410.11,0.0,-0.0,X,X,X,X,X,X,,,,,,,Warning: Single iteration in descent took more than 1000ms (took 1017ms),ascending
+9284,964.96,25.49,0.3,410.02,-0.09,-0.0,X,X,X,X,X,X,,,,,,,Warning: Single iteration in descent took more than 1000ms (took 1025ms),ascending
+10299,964.96,25.48,0.3,410.02,0.0,0.0,X,X,X,X,X,X,,,,,,,Warning: Single iteration in descent took more than 1000ms (took 1015ms),descending
+11327,964.95,25.46,0.3,410.11,0.09,0.0,X,X,X,X,X,X,,X,X,X,,,Warning: Single iteration in descent took more than 1000ms (took 1015ms),landed
+12400,,,,,,,,,,,,,,,,,,,None,landed
+13406,,,,,,,,,,,,,,,,,,,None,landed
+14413,,,,,,,,,,,,,,,,,,,None,landed
+15423,,,,,,,,,,,,,,,,,,,None,landed
+16429,,,,,,,,,,,,,,,,,,,None,landed
+17435,,,,,,,,,,,,,,,,,,,None,landed
+18442,,,,,,,,,,,,,,,,,,,None,landed
+19448,,,,,,,,,,,,,,,,,,,None,landed
+20458,,,,,,,,,,,,,,,,,,,None,landed
+21465,,,,,,,,,,,,,,,,,,,None,landed
+22471,,,,,,,,,,,,,,,,,,,None,landed
+23477,,,,,,,,,,,,,,,,,,,None,landed
+24484,,,,,,,,,,,,,,,,,,,None,landed
+25494,,,,,,,,,,,,,,,,,,,None,landed

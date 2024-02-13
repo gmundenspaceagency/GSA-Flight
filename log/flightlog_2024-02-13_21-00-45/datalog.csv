@@ -1,0 +1,30 @@
+Teamname: Gmunden Space Agency, CanSat Flight Logfile at: 2024-02-13 21:00:45.722728
+
+Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),Errors,Status
+5,964.86,22.57,0.42,410.89,,,,,,,,,,,,,,,None,ground_level
+1011,964.86,22.59,0.41,410.89,,,,,,,,,,,,,,,None,ground_level
+2020,964.86,22.61,0.41,410.89,,,,,,,,,,,,,,,None,ground_level
+3028,964.87,22.62,0.41,410.8,,,,,,,,,,,,,,,None,ground_level
+4037,964.85,22.64,0.41,410.98,,,,,,,,,,,,,,,None,ground_level
+5046,964.85,22.66,0.4,410.98,,,,,,,,,,,,,,,None,ground_level
+6059,964.85,22.68,0.39,410.98,,,,,,,,,,,,,,,None,ground_level
+7068,964.85,22.69,0.38,410.98,,,,,,,,,,,,,,,None,ground_level
+8077,964.84,22.7,0.38,411.06,,,,,,,,,,,,,,,None,ground_level
+9086,964.84,22.72,0.38,411.06,,,,,,,,,,,,,,,None,ground_level
+10095,964.85,22.74,0.39,410.98,,,,,,,,,,,,,,,None,ground_level
+11107,964.85,22.76,0.4,410.98,,,,,,,,,,,,,,,None,ground_level
+12116,964.86,22.78,0.4,410.89,,,,,,,,,,,,,,,None,ground_level
+13124,964.87,22.81,0.39,410.8,,,,,,,,,,,,,,,None,ground_level
+14133,964.87,22.82,0.38,410.8,,,,,,,,,,,,,,,None,ground_level
+15142,964.87,22.83,0.38,410.8,,,,,,,,,,,,,,,None,ground_level
+16155,964.87,22.85,0.37,410.8,,,,,,,,,,,,,,,None,ground_level
+17161,964.88,22.87,0.39,410.72,,,,,,,,,,,,,,,None,ground_level
+18170,964.88,22.88,0.38,410.72,,,,,,,,,,,,,,,None,ground_level
+19178,964.88,22.89,0.37,410.72,,,,,,,,,,,,,,,None,ground_level
+20187,964.88,22.91,0.37,410.72,,,,,,,,,,,,,,,None,ground_level
+21200,964.88,22.91,0.37,410.72,,,,,,,,,,,,,,,None,ground_level
+22208,964.88,22.92,0.36,410.72,,,,,,,,,,,,,,,None,ground_level
+23217,964.89,22.93,0.38,410.63,,,,,,,,,,,,,,,None,ground_level
+24226,964.88,22.95,0.38,410.72,,,,,,,,,,,,,,,None,ground_level
+25234,964.88,22.95,0.38,410.72,,,,,,,,,,,,,,,None,ground_level
+26247,964.88,22.96,0.38,410.72,,,,,,,,,,,,,,,None,ground_level

@@ -15,7 +15,7 @@ from bme280 import BME280
 from Adafruit_ADS1x15 import ADS1115
 from gsa_components.mpu6050.mpu6050 import Mpu6050
 from gsa_components.bh1750.bh1750 import Bh1750
-from gsa_components.motor import Motor
+from gsa_components.motor import StepperMotor
 from gsa_components.rak4200 import Rak4200
 from tests import CircularPIDController
 
@@ -39,11 +39,10 @@ Allgemeine ToDos:
 - Arbeit mit Daten nach Flug
     - Wenn schon Flight-Log erstellt, probieren die Daten in coolen Diagrammen darzustellen
 - Script sofort nach Start von Pi ausführen
--Create a low power mode
--only activate motor on the way down
 """
 
 CANSAT_ID = "69xd"
+MODE = "groundtest" # either "groundtest" or "flight"
 BUS = smbus.SMBus(1)
 channel_array=[0b00000001,0b00000010,0b00000100,0b00001000,0b00010000,0b00100000,0b01000000,0b10000000]
 pi_state = "initializing"
@@ -54,7 +53,7 @@ blinking = False
 
 # initialize and test onboard led
 try:
-    status_led = LED(23)
+    status_led = LED(25)
 
     # controls blinking of pi led to indicate different states of pi
     def blink_onboard(timeout: float, state: str) -> None:
@@ -126,9 +125,9 @@ def initialize_mpu6050()->Optional[Mpu6050]:
     
     return mpu6050
 
-def initialize_motor()->Optional[Motor]:
+def initialize_motor()->Optional[StepperMotor]:
     try:
-        motor = Motor(26, 19, 200, 0.002)
+        motor = StepperMotor(26, 19, 200, 0.002)
         # sleep(0.5)
         # motor.set_angle(270)
         # sleep(0.5)
@@ -315,7 +314,7 @@ def main()->None:
         with open(logfile_path, "a") as logfile:
             logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},,,,,,,,,,,,,,,None,{pi_state}\n")
 
-        if altitude > start_altitude + 10:
+        if altitude > start_altitude + 10 or (MODE == "groundtest" and len(timestamps) > 5):
             #TODO: also check Gps data
             pi_state = "ascending"
         
@@ -362,7 +361,7 @@ def main()->None:
                 vertical_speeds.append(vertical_speed)
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
-                if avg_vertical_speed < -2:
+                if avg_vertical_speed < -2 or (MODE == "groundtest" and len(timestamps) > 10):
                     pi_state = "descending"        
 
             # acceleration can only be calculated after 3 height measures
@@ -462,7 +461,7 @@ def main()->None:
 
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
-                if altitude < start_altitude + 10:
+                if altitude < start_altitude + 10 or (MODE == "groundtest" and len(timestamps) > 15):
                     pi_state = "landed"
 
             # acceleration can only be calculated after 3 height measures
