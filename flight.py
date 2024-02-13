@@ -7,7 +7,7 @@ import RPi.GPIO as GPIO
 
 from typing import Optional
 from threading import Thread
-from gpiozero import LED, Button
+from gpiozero import LED
 from time import sleep, perf_counter
 
 # pimoroni-bme280 1.0.0
@@ -145,7 +145,7 @@ Günther is the TRANSCEIVER!!!
 def initialize_guenther()->Optional[Rak4200]:
     try:
         guenther = Rak4200()
-        guenther.start('send')
+        guenther.start("send")
     except Exception as error:
         guenther = None
         print("Problem with guenther: " + str(error))
@@ -163,11 +163,10 @@ def initialize_camera()->Optional[picamera.PiCamera]:
 
 try:
     GPIO.setmode(GPIO.BCM)
-    power_light2 = 17
-    power_light3 = 27
-    GPIO.setup(17, GPIO.OUT, initial=0)
-    GPIO.setup(27, GPIO.OUT, initial=0)
-    power_button = Button(24, pull_up=True)
+
+    # not using Button class of gpiozero because of weird error when starting from crontab
+    power_button = 10
+    GPIO.setup(power_button, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     
     # every sensor is in a try-block so the program will still work when one of the sensors fails on launch
     light1 = initialize_light1()
@@ -182,7 +181,7 @@ except KeyboardInterrupt:
     print("Initializing aborted by keyboard interrupt")
     GPIO.cleanup()
     exit()
-"""
+
 try:
     pi_state = "ready"
     print("Pi is ready, hold start button to start program")
@@ -196,7 +195,7 @@ try:
 
     # wait for 1s button press
     while True:
-        if power_button.is_pressed:
+        if GPIO.input(power_button) == GPIO.LOW:
             pi_state = "starting"
 
             while blinking:
@@ -206,7 +205,7 @@ try:
             Thread(target=blink_onboard, args=(0.05, "starting")).start()
             sleep(1)
 
-            if power_button.is_pressed:
+            if GPIO.input(power_button) == GPIO.LOW:
                 break
             else:
                 pi_state = "ready"
@@ -219,7 +218,7 @@ except KeyboardInterrupt:
     print("Program stopped in ready state by keyboard interrupt")
     GPIO.cleanup()
     exit()
-"""
+
 luminance1 = luminance2 = luminance3 = None
 
 def rotation_mechanism() -> None:
@@ -421,7 +420,7 @@ def main()->None:
             time_difference = timestamp - timestamps[-2]
             
             if time_difference > max_iteration_time:
-                print(f'Warning: Single iteration took more than {max_iteration_time}ms (took {time_difference}ms)')
+                print(f"Warning: Single iteration took more than {max_iteration_time}ms (took {time_difference}ms)")
 
         # X means they were not set yet
         pressure = temperature = altitude = humidity = vertical_speed = vertical_acceleration = luminance1 = luminance2 = luminance3 = "X"
@@ -514,11 +513,11 @@ def main()->None:
     
 
     while pi_state == "landed":
+        status_led.off()
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
 
-        #TODO: add a landed mode
-        print("landed")
+        #TODO: add a landed mode with coordinates, beeping and stuff
 
         with open(logfile_path, "a") as logfile:
             logfile.write(f"{timestamp},,,,,,,,,,,,,,,,,,,None,{pi_state}\n")
@@ -529,6 +528,30 @@ def main()->None:
             # try to contact transceiver again
             guenther = initialize_guenther()
         
+        status_led.on()
+
+        # check for turn off
+        if GPIO.input(power_button) == GPIO.LOW:
+            pi_state = "shutting down"
+            
+            while blinking:
+                pass
+            
+            # fast flashing telling pi is about to shut down
+            Thread(target=blink_onboard, args=(0.05, "shutting down")).start()
+            sleep(1)
+
+            if GPIO.input(power_button) == GPIO.LOW:
+                print("Program switched off with power button")
+                status_led.on()
+                exit()
+            else:
+                pi_state = "landed"
+
+                while blinking:
+                    pass 
+
+                status_led.on()
         sleep(1)
 
 try:
@@ -541,13 +564,13 @@ try:
     status_led.on()
 
     # wait until power button is let go
-    while power_button.is_pressed:
+    while GPIO.input(power_button) == GPIO.LOW:
         pass
 
     main()
 
 except KeyboardInterrupt:
-    print('Running program stopped by keyboard interrupt')
+    print("Running program stopped by keyboard interrupt")
     status_led.off()
 
 finally:
@@ -560,6 +583,6 @@ finally:
     currentTimeStr = currentTime.strftime("%H:%M:%S")
     
     if guenther is not None:
-        guenther.send('(Info) CanSat program finished at: ' + currentTimeStr)
+        guenther.send("(Info) CanSat program finished at: " + currentTimeStr)
         
-    print('bye bye')
+    print("bye bye")
