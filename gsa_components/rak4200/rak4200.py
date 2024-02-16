@@ -47,9 +47,8 @@ class Rak4200:
         # wait for serial port connection to be established
         time.sleep(1)
 
-    def sendAtCMD(self:any, at_cmd:str, wait:int=1)->Optional[str]:
+    def sendAtCMD(self:any, at_cmd:str)->Optional[str]:
         self.uart0.write((at_cmd + '\r\n').encode())
-        time.sleep(wait)
         dataString = self.uart0.readline().decode('utf-8', errors='replace')
         return dataString if dataString != '' else None
     
@@ -165,7 +164,7 @@ if __name__ == '__main__':
 
     if test_mode == 'receive':
         test = Rak4200(serial_port='/dev/ttyUSB0')
-        test.set_mode('receive')
+        test.start('receive')
         print('RAK4200 connected, receiving messages...')
 
         while True:
@@ -178,7 +177,7 @@ if __name__ == '__main__':
         test = Rak4200(serial_port='/dev/ttyS0')
         test.set_mode('send')
         print('RAK4200 connected, sending test data...')
-
+    
         while True:
             currentTime = datetime.now()
             currentTimeStr = currentTime.strftime('%H:%M:%S')

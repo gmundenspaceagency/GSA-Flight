@@ -7,7 +7,7 @@ import RPi.GPIO as GPIO
 
 from typing import Optional
 from threading import Thread
-from gpiozero import LED, Button
+from gpiozero import LED
 from time import sleep, perf_counter
 
 # pimoroni-bme280 1.0.0
@@ -15,7 +15,7 @@ from bme280 import BME280
 from Adafruit_ADS1x15 import ADS1115
 from gsa_components.mpu6050.mpu6050 import Mpu6050
 from gsa_components.bh1750.bh1750 import Bh1750
-from gsa_components.motor import Motor
+from gsa_components.motor import StepperMotor
 from gsa_components.rak4200 import Rak4200
 from tests import CircularPIDController
 
@@ -26,7 +26,6 @@ Allgemeine ToDos:
 - GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
     - GPS Höhendaten mit dem bme280280 Daten abgleichen
 - Temperaturdaten von GYRO und bme280280 abgleichen
-- Kameraaufnahmen machen
 - Detailliertes Flight-Log erstellen (Flight_19d-10m-2024y_17h-35m-01s.json)
     - Für jeden timestap ALLE DATEN die wir überhaupt nur bekommen können speichern
 - Error handling
@@ -40,11 +39,10 @@ Allgemeine ToDos:
 - Arbeit mit Daten nach Flug
     - Wenn schon Flight-Log erstellt, probieren die Daten in coolen Diagrammen darzustellen
 - Script sofort nach Start von Pi ausführen
--Create a low power mode
--only activate motor on the way down
 """
 
 CANSAT_ID = "69xd"
+MODE = "groundtest" # either "groundtest" or "flight"
 BUS = smbus.SMBus(1)
 channel_array=[0b00000001,0b00000010,0b00000100,0b00001000,0b00010000,0b00100000,0b01000000,0b10000000]
 pi_state = "initializing"
@@ -55,7 +53,7 @@ blinking = False
 
 # initialize and test onboard led
 try:
-    status_led = LED(23)
+    status_led = LED(25)
 
     # controls blinking of pi led to indicate different states of pi
     def blink_onboard(timeout: float, state: str) -> None:
@@ -127,9 +125,9 @@ def initialize_mpu6050()->Optional[Mpu6050]:
     
     return mpu6050
 
-def initialize_motor()->Optional[Motor]:
+def initialize_motor()->Optional[StepperMotor]:
     try:
-        motor = Motor(26,19,13,6,200,0.002)
+        motor = StepperMotor(26, 19, 200, 0.002)
         # sleep(0.5)
         # motor.set_angle(270)
         # sleep(0.5)
@@ -147,7 +145,7 @@ Günther is the TRANSCEIVER!!!
 def initialize_guenther()->Optional[Rak4200]:
     try:
         guenther = Rak4200()
-        guenther.start('send')
+        guenther.start("send")
     except Exception as error:
         guenther = None
         print("Problem with guenther: " + str(error))
@@ -165,11 +163,10 @@ def initialize_camera()->Optional[picamera.PiCamera]:
 
 try:
     GPIO.setmode(GPIO.BCM)
-    power_light2 = 17
-    power_light3 = 27
-    GPIO.setup(17, GPIO.OUT, initial=0)
-    GPIO.setup(27, GPIO.OUT, initial=0)
-    power_button = Button(24, pull_up=True)
+
+    # not using Button class of gpiozero because of weird error when starting from crontab
+    power_button = 10
+    GPIO.setup(power_button, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     
     # every sensor is in a try-block so the program will still work when one of the sensors fails on launch
     light1 = initialize_light1()
@@ -184,7 +181,7 @@ except KeyboardInterrupt:
     print("Initializing aborted by keyboard interrupt")
     GPIO.cleanup()
     exit()
-"""
+
 try:
     pi_state = "ready"
     print("Pi is ready, hold start button to start program")
@@ -198,7 +195,7 @@ try:
 
     # wait for 1s button press
     while True:
-        if power_button.is_pressed:
+        if GPIO.input(power_button) == GPIO.LOW:
             pi_state = "starting"
 
             while blinking:
@@ -208,7 +205,7 @@ try:
             Thread(target=blink_onboard, args=(0.05, "starting")).start()
             sleep(1)
 
-            if power_button.is_pressed:
+            if GPIO.input(power_button) == GPIO.LOW:
                 break
             else:
                 pi_state = "ready"
@@ -221,7 +218,7 @@ except KeyboardInterrupt:
     print("Program stopped in ready state by keyboard interrupt")
     GPIO.cleanup()
     exit()
-"""
+
 luminance1 = luminance2 = luminance3 = None
 
 def rotation_mechanism() -> None:
@@ -272,74 +269,85 @@ def main()->None:
     start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
     start_perf = round(perf_counter() * 1000)
     # TODO: realistische iteration time
-    max_iteration_time = 1000
     timestamps = []
-    pressures = []
-    temperatures = []
-    humidities = []
     altitudes = []
     vertical_speeds = []
     vertical_accelerations = []
-    rotationrates = []
-    mpu6050_accelerations = []
-    rotationangles = []
+    max_iteration_time = 1000
     start_altitude = 266.0
     
-    log_dir = f'/home/gsa202324/GSA-Flight/log/flightlog_{start_time_str}/'
+    log_dir = f"/home/gsa202324/GSA-Flight/log/flightlog_{start_time_str}/"
     os.mkdir(log_dir)
-    output = log_dir + 'flight-video.h264'
+    video_output = log_dir + "flight-video.h264"
     resolution = (1920, 1080)
     
     def start_recording():
         if camera is not None:
             camera.resolution = resolution
             camera.start_preview()
-            camera.start_recording(output)
+            camera.start_recording(video_output)
     
     bme280.update_sensor()
     pressure = round(float(bme280.pressure), 2)
-    pressures.append(pressure)
     altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
     start_altitude = altitude
-    altitudes.append(altitude)
+
+    logfile_path = log_dir + "datalog.csv"
+
+    with open(logfile_path, "a") as logfile:
+        logfile.write(f"Teamname: Gmunden Space Agency, CanSat Flight Logfile at: {start_time}\n")
+        logfile.write("\n")
+        logfile.write("Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),Errors,Status\n")
 
     while pi_state == "ground_level":
+        status_led.off()
+        timestamp = round(perf_counter() * 1000 - start_perf)
+        timestamps.append(timestamp)
         bme280.update_sensor()
         pressure = round(float(bme280.pressure), 2)
-        pressures.append(pressure)
         altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
         altitudes.append(altitude)
-        #TODO: send checks to guenther
+        temperature = round(float(bme280.temperature), 2)
+        humidity = round(float(bme280.humidity) / 100, 2)
 
-        if altitude > start_altitude + 10:
+        with open(logfile_path, "a") as logfile:
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},,,,,,,,,,,,,,,None,{pi_state}\n")
+
+        if altitude > start_altitude + 10 or (MODE == "groundtest" and len(timestamps) > 5):
             #TODO: also check Gps data
             pi_state = "ascending"
         
+        try:
+            guenther.send(f"(Info) Chilling on ground level")
+        except Exception as error:
+            # try to contact transceiver again
+            guenther = initialize_guenther()
+        
+        status_led.on()
         sleep(1)
 
     while pi_state == "ascending":
+        status_led.off()
+        errors = []
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
-        status_led.off()
         
         if len(timestamps) > 1:
             time_difference = timestamp - timestamps[-2]
             
             if time_difference > max_iteration_time:
                 print(f"Warning: Single iteration in descent took more than {max_iteration_time}ms (took {time_difference}ms)")
+                errors.append(f"Warning: Single iteration in descent took more than {max_iteration_time}ms (took {time_difference}ms)")
         
         # X means they were not set yet
-        pressure = "X"
-        temperature = "X"
+        pressure = temperature = altitude = humidity = vertical_speed = vertical_acceleration = "X"
+        acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = "X"
         
         try:
             bme280.update_sensor()
             pressure = round(float(bme280.pressure), 2)
-            pressures.append(pressure)
             temperature = round(float(bme280.temperature), 2)
-            temperatures.append(temperature)
             humidity = round(float(bme280.humidity) / 100, 2)
-            humidities.append(humidity)
             altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
             altitudes.append(altitude)
             print(f"Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%")
@@ -352,14 +360,12 @@ def main()->None:
                 vertical_speeds.append(vertical_speed)
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
-                if avg_vertical_speed < -2:
-                    print("CanSat has started falling")
+                if avg_vertical_speed < -2 or (MODE == "groundtest" and len(timestamps) > 10):
                     pi_state = "descending"        
 
             # acceleration can only be calculated after 3 height measures
             if len(timestamps) > 2:
                 avg_vertical_acceleration = round(sum(vertical_accelerations[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
-
                 vertical_acceleration = round((vertical_speed - vertical_speeds[-2]) / time_difference, 3)
                 vertical_accelerations.append(vertical_acceleration)
 
@@ -370,13 +376,10 @@ def main()->None:
     
         try:
             gyro_data = mpu6050.get_scaled_gyroscope()
-            rotationrates.append(gyro_data)
             rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
             acceleration = mpu6050.get_scaled_acceleration()
-            mpu6050_accelerations.append(acceleration)
             acceleration_x, acceleration_y, acceleration_z = acceleration
             rotation = mpu6050.get_rotation(*acceleration)
-            rotationangles.append(rotation)
             rotation_x, rotation_y = rotation
             
             print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
@@ -391,6 +394,9 @@ def main()->None:
         except Exception as error:
             # try to contact transceiver again
             guenther = initialize_guenther()
+
+        with open(logfile_path, "a") as logfile:
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,{';'.join(errors)},{pi_state}\n")
         
         status_led.on()
         sleep(1)
@@ -398,6 +404,7 @@ def main()->None:
     rotation_thread = Thread(target=rotation_mechanism, args=())
     rotation_thread.start()
     start_recording()
+    print("CanSat has started falling")
 
     while pi_state == "descending":
         timestamp = round(perf_counter() * 1000 - start_perf)
@@ -413,7 +420,11 @@ def main()->None:
             time_difference = timestamp - timestamps[-2]
             
             if time_difference > max_iteration_time:
-                print(f'Warning: Single iteration took more than {max_iteration_time}ms (took {time_difference}ms)')
+                print(f"Warning: Single iteration took more than {max_iteration_time}ms (took {time_difference}ms)")
+
+        # X means they were not set yet
+        pressure = temperature = altitude = humidity = vertical_speed = vertical_acceleration = luminance1 = luminance2 = luminance3 = "X"
+        acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = "X"
 
         print(f"Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}")
 
@@ -432,11 +443,8 @@ def main()->None:
         try:
             bme280.update_sensor()
             pressure = round(float(bme280.pressure), 2)
-            pressures.append(pressure)
             temperature = round(float(bme280.temperature), 2)
-            temperatures.append(temperature)
             humidity = round(float(bme280.humidity) / 100, 2)
-            humidities.append(humidity)
             altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
             altitudes.append(altitude)
 
@@ -452,7 +460,7 @@ def main()->None:
 
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
-                if altitude < start_altitude + 10:
+                if altitude < start_altitude + 10 or (MODE == "groundtest" and len(timestamps) > 15):
                     pi_state = "landed"
 
             # acceleration can only be calculated after 3 height measures
@@ -469,13 +477,10 @@ def main()->None:
     
         try:
             gyro_data = mpu6050.get_scaled_gyroscope()
-            rotationrates.append(gyro_data)
             rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
             acceleration = mpu6050.get_scaled_acceleration()
-            mpu6050_accelerations.append(acceleration)
             acceleration_x, acceleration_y, acceleration_z = acceleration
             rotation = mpu6050.get_rotation(*acceleration)
-            rotationangles.append(rotation)
             rotation_x, rotation_y = rotation
             
             print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
@@ -491,6 +496,9 @@ def main()->None:
             # try to contact transceiver again
             guenther = initialize_guenther()
         
+        with open(logfile_path, "a") as logfile:
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,{';'.join(errors)},{pi_state}\n")
+        
         status_led.on()
         sleep(1)
 
@@ -503,10 +511,48 @@ def main()->None:
         except (KeyError, picamera.exc.PiCameraNotRecording):
             pass
     
+
     while pi_state == "landed":
-        #TODO: add a landed mode
-        print("landed")
-        sleep(1)    
+        status_led.off()
+        timestamp = round(perf_counter() * 1000 - start_perf)
+        timestamps.append(timestamp)
+
+        #TODO: add a landed mode with coordinates, beeping and stuff
+
+        with open(logfile_path, "a") as logfile:
+            logfile.write(f"{timestamp},,,,,,,,,,,,,,,,,,,None,{pi_state}\n")
+
+        try:
+            guenther.send(f"(Info) Back on the ground again")
+        except Exception as error:
+            # try to contact transceiver again
+            guenther = initialize_guenther()
+        
+        status_led.on()
+
+        # check for turn off
+        if GPIO.input(power_button) == GPIO.LOW:
+            pi_state = "shutting down"
+            
+            while blinking:
+                pass
+            
+            # fast flashing telling pi is about to shut down
+            Thread(target=blink_onboard, args=(0.05, "shutting down")).start()
+            sleep(1)
+
+            if GPIO.input(power_button) == GPIO.LOW:
+                print("Program switched off with power button")
+                status_led.on()
+                exit()
+            else:
+                pi_state = "landed"
+
+                while blinking:
+                    pass 
+
+                status_led.on()
+        sleep(1)
 
 try:
     pi_state = "ground_level"
@@ -518,13 +564,13 @@ try:
     status_led.on()
 
     # wait until power button is let go
-    while power_button.is_pressed:
+    while GPIO.input(power_button) == GPIO.LOW:
         pass
 
     main()
 
 except KeyboardInterrupt:
-    print('Running program stopped by keyboard interrupt')
+    print("Running program stopped by keyboard interrupt")
     status_led.off()
 
 finally:
@@ -537,6 +583,6 @@ finally:
     currentTimeStr = currentTime.strftime("%H:%M:%S")
     
     if guenther is not None:
-        guenther.send('(Info) CanSat program finished at: ' + currentTimeStr)
+        guenther.send("(Info) CanSat program finished at: " + currentTimeStr)
         
-    print('bye bye')
+    print("bye bye")
