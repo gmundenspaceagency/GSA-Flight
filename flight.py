@@ -17,6 +17,7 @@ from gsa_components.mpu6050.mpu6050 import Mpu6050
 from gsa_components.bh1750.bh1750 import Bh1750
 from gsa_components.motor import StepperMotor
 from gsa_components.rak4200 import Rak4200
+from gsa_components.gt_u7 import Gt_u7
 from tests import CircularPIDController
 
 """
@@ -161,6 +162,13 @@ def initialize_camera()->Optional[picamera.PiCamera]:
     
     return camera
 
+def initialize_gt_u7()->Optional[Gt_u7]:
+    try:
+        gps = Gt_u7()
+    except Exception as error:
+        gps = None
+        print("Problem with gps: " + str(error))
+
 try:
     GPIO.setmode(GPIO.BCM)
 
@@ -176,7 +184,8 @@ try:
     mpu6050 = initialize_mpu6050()
     motor = initialize_motor()
     guenther = initialize_guenther()
-    camera = initialize_camera()    
+    camera = initialize_camera()
+    gps = initialize_gt_u7() 
 except KeyboardInterrupt:
     print("Initializing aborted by keyboard interrupt")
     GPIO.cleanup()
@@ -263,7 +272,7 @@ def rotation_mechanism() -> None:
             print("Error in rotation mechanism: " + str(error))
 
 def main()->None:
-    global pi_state, ads1115, bme280, mpu6050, guenther, camera
+    global pi_state, ads1115, bme280, mpu6050, guenther, camera, gps
 
     start_time = datetime.datetime.now()
     start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
