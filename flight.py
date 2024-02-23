@@ -76,7 +76,7 @@ except Exception as error:
 # initialize sensors
 def initialize_light1()->Optional[Bh1750]:
     try:
-        light1 = Bh1750()
+        light1 = Bh1750(1, 0x5c)
         light1.luminance(Bh1750.ONCE_LOWRES)
     except Exception as error:
         light1 = None
@@ -87,13 +87,13 @@ def initialize_light1()->Optional[Bh1750]:
 def initialize_light2n3()->Optional[Bh1750]:   
     try:
         BUS.write_byte(0x70, channel_array[6])
-        light2 = Bh1750(1, 0x5c)
-        light2.luminance(Bh1750.ONCE_LOWRES)
+        light2n3 = Bh1750()
+        light2n3.luminance(Bh1750.ONCE_LOWRES)
     except Exception as error:
-        light2 = None
+        light2n3 = None
         print("Problem with light sensor 2+3 or Multiplexer: " + str(error))
     
-    return light2
+    return light2n3
 
 def initialize_ads1115()->Optional[ADS1115]:
     try:
@@ -402,7 +402,7 @@ def main()->None:
         sleep(1)
 
     rotation_thread = Thread(target=rotation_mechanism, args=())
-    rotation_thread.start()
+    # rotation_thread.start()
     start_recording()
     print("CanSat has started falling")
 
@@ -460,7 +460,7 @@ def main()->None:
 
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
-                if altitude < start_altitude + 10 or (MODE == "groundtest" and len(timestamps) > 15):
+                if (MODE != "groundtest" and altitude < start_altitude + 10) or (MODE == "groundtest" and len(timestamps) > 15):
                     pi_state = "landed"
 
             # acceleration can only be calculated after 3 height measures
