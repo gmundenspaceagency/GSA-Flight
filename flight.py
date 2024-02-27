@@ -14,7 +14,7 @@ from time import sleep, perf_counter
 from bme280 import BME280
 from Adafruit_ADS1x15 import ADS1115
 from gsa_components.mpu6050 import Mpu6050
-from gsa_components.multiplexer import Multiplexer 
+from gsa_components.multiplexer import Multiplexer
 from gsa_components.bh1750 import Bh1750
 from gsa_components.motor import StepperMotor
 from gsa_components.rak4200 import Rak4200
@@ -22,8 +22,7 @@ from tests import CircularPIDController
 
 """
 Allgemeine ToDos:
-
-- Multiplexer class
+- Programm stoppt einfach wenn guenther nicht gefunden wird (timeout?)
 - GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
     - GPS Höhendaten mit dem bme280280 Daten abgleichen
 - Temperaturdaten von GYRO und bme280280 abgleichen
