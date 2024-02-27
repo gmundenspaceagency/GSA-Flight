@@ -26,19 +26,16 @@ Allgemeine ToDos:
 - GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
     - GPS Höhendaten mit dem bme280280 Daten abgleichen
 - Temperaturdaten von GYRO und bme280280 abgleichen
-- Detailliertes Flight-Log erstellen (Flight_19d-10m-2024y_17h-35m-01s.json)
-    - Für jeden timestap ALLE DATEN die wir überhaupt nur bekommen können speichern
 - Error handling
     - Wenn ein Error zum ersten Mal auftritt: speichern wann er aufgetreten ist, den Fehlertext (str(error)), und wenn er wieder weggeht speicher wann er weggegangen ist
     - Trotzdem noch alle Fehler printen
     - In einer JSON Datei allen unseren Fehlern error codes zuordnen (eg. 01 -> Fehler mit Lichtsensor1, 08 -> Fehler mit bme280280)
         - In einem Array aktuell aktive Fehler speichern und dieses Array wenn möglich zur Bodenstation schicken
 - Bodenstation und Transceiver
-    - Empfangene Daten in einem bodenstation-log.json speichern
+    - Empfangene Daten in einem bodenstation-log.csv speichern
     - Kleine UI mit empfangenen Daten, mögliche Fehler Codes darstellen
 - Arbeit mit Daten nach Flug
     - Wenn schon Flight-Log erstellt, probieren die Daten in coolen Diagrammen darzustellen
-- Script sofort nach Start von Pi ausführen
 - Script noch sicherer machen, ALLE EXCEPTIONS müssen aufgefangen werden
 """
 
@@ -284,9 +281,12 @@ def main()->None:
     
     def start_recording():
         if camera is not None:
-            camera.resolution = resolution
-            camera.start_preview()
-            camera.start_recording(video_output)
+            try:
+                camera.resolution = resolution
+                camera.start_preview()
+                camera.start_recording(video_output)
+            except Exception as error:
+                print("Error in camera recording: " + str(error))
     
     bme280.update_sensor()
     pressure = round(float(bme280.pressure), 2)
