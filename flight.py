@@ -542,7 +542,7 @@ def main()->None:
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
         
-        if beeper.is_beeping:
+        if beeper.is_lit:
             beeper.off()
         else:
             beeper.on()
