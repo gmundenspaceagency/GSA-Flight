@@ -39,6 +39,7 @@ Allgemeine ToDos:
 - Arbeit mit Daten nach Flug
     - Wenn schon Flight-Log erstellt, probieren die Daten in coolen Diagrammen darzustellen
 - Script sofort nach Start von Pi ausführen
+- Script noch sicherer machen, ALLE EXCEPTIONS müssen aufgefangen werden
 """
 
 CANSAT_ID = "69xd"
