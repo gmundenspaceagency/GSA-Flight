@@ -2,7 +2,7 @@ import serial
 import pynmea2
 
 class Gt_u7:
-    def __init__(self, port='/dev/ttyACM1', baud=9600):
+    def __init__(self, port='/dev/ttyACM0', baud=9600):
         self.serialPort = serial.Serial(port, baudrate=baud, timeout=1)
 
     def extract_lat_lon(self, nmea_string, data_type):
@@ -82,7 +82,6 @@ if __name__ == "__main__":
     gt_u7 = Gt_u7()
     while True:
         nmea_sentence = gt_u7.serialPort.readline().decode().strip()
-        print(nmea_sentence)
         gt_u7.extract_lat_lon(nmea_sentence, "decimal")
         gt_u7.extract_altitude(nmea_sentence)
         #gt_u7.extract_velocity(nmea_sentence)
