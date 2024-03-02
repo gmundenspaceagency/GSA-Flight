@@ -13,71 +13,69 @@ from time import sleep, perf_counter
 # pimoroni-bme280 1.0.0
 from bme280 import BME280
 from Adafruit_ADS1x15 import ADS1115
-from gsa_components.mpu6050.mpu6050 import Mpu6050
-from gsa_components.bh1750.bh1750 import Bh1750
+from gsa_components.mpu6050 import Mpu6050
+from gsa_components.multiplexer import Multiplexer
+from gsa_components.bh1750 import Bh1750
 from gsa_components.motor import StepperMotor
 from gsa_components.rak4200 import Rak4200
-from gsa_components.gt_u7 import Gt_u7
 from tests import CircularPIDController
 
 """
 Allgemeine ToDos:
-
-- Multiplexer class
+- Programm stoppt einfach wenn guenther nicht gefunden wird (timeout?)
 - GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
     - GPS Höhendaten mit dem bme280280 Daten abgleichen
 - Temperaturdaten von GYRO und bme280280 abgleichen
-- Detailliertes Flight-Log erstellen (Flight_19d-10m-2024y_17h-35m-01s.json)
-    - Für jeden timestap ALLE DATEN die wir überhaupt nur bekommen können speichern
 - Error handling
     - Wenn ein Error zum ersten Mal auftritt: speichern wann er aufgetreten ist, den Fehlertext (str(error)), und wenn er wieder weggeht speicher wann er weggegangen ist
     - Trotzdem noch alle Fehler printen
     - In einer JSON Datei allen unseren Fehlern error codes zuordnen (eg. 01 -> Fehler mit Lichtsensor1, 08 -> Fehler mit bme280280)
         - In einem Array aktuell aktive Fehler speichern und dieses Array wenn möglich zur Bodenstation schicken
 - Bodenstation und Transceiver
-    - Empfangene Daten in einem bodenstation-log.json speichern
+    - Empfangene Daten in einem bodenstation-log.csv speichern
     - Kleine UI mit empfangenen Daten, mögliche Fehler Codes darstellen
 - Arbeit mit Daten nach Flug
     - Wenn schon Flight-Log erstellt, probieren die Daten in coolen Diagrammen darzustellen
-- Script sofort nach Start von Pi ausführen
+- Script noch sicherer machen, ALLE EXCEPTIONS müssen aufgefangen werden
 """
 
 CANSAT_ID = "69xd"
 MODE = "groundtest" # either "groundtest" or "flight"
-BUS = smbus.SMBus(1)
-channel_array=[0b00000001,0b00000010,0b00000100,0b00001000,0b00010000,0b00100000,0b01000000,0b10000000]
 pi_state = "initializing"
 print("Pi is initializing...")
 
-# is True when a second thread with the blink_onboard function is running
+# is True when a second thread with the blink_status function is running
 blinking = False
 
-# initialize and test onboard led
+# initialize and test status led
 try:
     status_led = LED(25)
 
-    # controls blinking of pi led to indicate different states of pi
-    def blink_onboard(timeout: float, state: str) -> None:
+    # controls blinking of status led to indicate different states of pi
+    def blink_status(seq: list[float], state: str) -> None:
         global blinking
         blinking = True
 
         while pi_state == state:
-            status_led.on()
-            sleep(timeout)
-            status_led.off()
-            sleep(timeout)
+            for timeout in seq:
+                if status_led.is_lit:
+                    status_led.off()
+                else:
+                    status_led.on()
+                
+                sleep(timeout)
 
         blinking = False
 
     # blinking to show pi is initializing
-    Thread(target=blink_onboard, args=(0.5, "initializing")).start()
+    Thread(target=blink_status, args=([0.5], "initializing")).start()
 except Exception as error:
     print("Warning: Error while initializing onboard LED: " + str(error))
 
 # initialize sensors
 def initialize_light1()->Optional[Bh1750]:
     try:
-        light1 = Bh1750()
+        light1 = Bh1750(1, 0x5c)
         light1.luminance(Bh1750.ONCE_LOWRES)
     except Exception as error:
         light1 = None
@@ -85,16 +83,24 @@ def initialize_light1()->Optional[Bh1750]:
     
     return light1
 
-def initialize_light2n3()->Optional[Bh1750]:   
+def set_multiplexer_channel(channel:int)->None:
     try:
-        BUS.write_byte(0x70, channel_array[6])
-        light2 = Bh1750(1, 0x5c)
-        light2.luminance(Bh1750.ONCE_LOWRES)
+        multiplexer.switch_to(channel)
     except Exception as error:
-        light2 = None
-        print("Problem with light sensor 2+3 or Multiplexer: " + str(error))
+        # try to contact module again
+        multiplexer = initialize_multiplexer()
+
+def initialize_light2n3()->Optional[Bh1750]:
+    set_multiplexer_channel(6)
+   
+    try:
+        light2n3 = Bh1750()
+        light2n3.luminance(Bh1750.ONCE_LOWRES)
+    except Exception as error:
+        light2n3 = None
+        print("Problem with light sensor 2 or 3: " + str(error))
     
-    return light2
+    return light2n3
 
 def initialize_ads1115()->Optional[ADS1115]:
     try:
@@ -162,13 +168,14 @@ def initialize_camera()->Optional[picamera.PiCamera]:
     
     return camera
 
-def initialize_gt_u7()->Optional[Gt_u7]:
+def initialize_multiplexer()->Optional[Multiplexer]:
     try:
-        gps = Gt_u7()
+        multiplexer = Multiplexer()
     except Exception as error:
-        gps = None
-        print("Problem with gps: " + str(error))
-    return gps
+        multiplexer = None
+        print("Problem with multiplexer: " + str(error))
+    
+    return multiplexer
 
 try:
     GPIO.setmode(GPIO.BCM)
@@ -176,8 +183,14 @@ try:
     # not using Button class of gpiozero because of weird error when starting from crontab
     power_button = 10
     GPIO.setup(power_button, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+    beeper = LED(21)
+    beeper.on()
+    sleep(0.5)
+    beeper.off()
     
     # every sensor is in a try-block so the program will still work when one of the sensors fails on launch
+    multiplexer = initialize_multiplexer()
     light1 = initialize_light1()
     light2n3 = initialize_light2n3()
     ads1115 = initialize_ads1115()
@@ -185,8 +198,7 @@ try:
     mpu6050 = initialize_mpu6050()
     motor = initialize_motor()
     guenther = initialize_guenther()
-    camera = initialize_camera()
-    gps = initialize_gt_u7() 
+    camera = initialize_camera() 
 except KeyboardInterrupt:
     print("Initializing aborted by keyboard interrupt")
     GPIO.cleanup()
@@ -196,12 +208,12 @@ try:
     pi_state = "ready"
     print("Pi is ready, hold start button to start program")
 
-    # wait until the second thread with the blink_onboard function has stopped
+    # wait until the second thread with the blink_status function has stopped
     while blinking:
         pass
 
     # blinking to show the pi is ready
-    Thread(target=blink_onboard, args=(0.1, "ready")).start()
+    Thread(target=blink_status, args=([0.1], "ready")).start()
 
     # wait for 1s button press
     while True:
@@ -212,7 +224,7 @@ try:
                 pass
 
             # fast flashing telling you should keep holding the button
-            Thread(target=blink_onboard, args=(0.05, "starting")).start()
+            Thread(target=blink_status, args=([0.05], "starting")).start()
             sleep(1)
 
             if GPIO.input(power_button) == GPIO.LOW:
@@ -223,7 +235,7 @@ try:
                 while blinking:
                     pass
 
-                Thread(target=blink_onboard, args=(0.5, "ready")).start()
+                Thread(target=blink_status, args=([0.5], "ready")).start()
 except KeyboardInterrupt:
     print("Program stopped in ready state by keyboard interrupt")
     GPIO.cleanup()
@@ -232,7 +244,7 @@ except KeyboardInterrupt:
 luminance1 = luminance2 = luminance3 = None
 
 def rotation_mechanism() -> None:
-    global luminance1, luminance2, luminance3
+    global light1, light2n3, multiplexer, luminance1, luminance2, luminance3
     
     while pi_state == "descending":            
         try:  
@@ -242,9 +254,9 @@ def rotation_mechanism() -> None:
                 # try to contact sensor again
                 light1 = initialize_light1()
             try:
-                BUS.write_byte(0x70, channel_array[7])
+                set_multiplexer_channel(7)
                 luminance2 = round(light2n3.luminance(Bh1750.ONCE_LOWRES), 4)
-                BUS.write_byte(0x70, channel_array[6])
+                set_multiplexer_channel(6)
                 luminance3 = round(light2n3.luminance(Bh1750.ONCE_LOWRES), 4)
             except Exception as error:
                 # try to contact sensor again
@@ -273,7 +285,7 @@ def rotation_mechanism() -> None:
             print("Error in rotation mechanism: " + str(error))
 
 def main()->None:
-    global pi_state, ads1115, bme280, mpu6050, guenther, camera, gps
+    global pi_state, ads1115, bme280, mpu6050, guenther, camera, multiplexer
 
     start_time = datetime.datetime.now()
     start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -293,9 +305,12 @@ def main()->None:
     
     def start_recording():
         if camera is not None:
-            camera.resolution = resolution
-            camera.start_preview()
-            camera.start_recording(video_output)
+            try:
+                camera.resolution = resolution
+                camera.start_preview()
+                camera.start_recording(video_output)
+            except Exception as error:
+                print("Error in camera recording: " + str(error))
     
     bme280.update_sensor()
     pressure = round(float(bme280.pressure), 2)
@@ -307,7 +322,7 @@ def main()->None:
     with open(logfile_path, "a") as logfile:
         logfile.write(f"Teamname: Gmunden Space Agency, CanSat Flight Logfile at: {start_time}\n")
         logfile.write("\n")
-        logfile.write("Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),GPS lat (°),GPS lon (°),Errors,Status\n")
+        logfile.write("Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),Errors,Status\n")
 
     while pi_state == "ground_level":
         status_led.off()
@@ -319,12 +334,9 @@ def main()->None:
         altitudes.append(altitude)
         temperature = round(float(bme280.temperature), 2)
         humidity = round(float(bme280.humidity) / 100, 2)
-        nmea_sentence = gps.serialPort.readline().decode().strip()
-        gps_lat_lon = gps.extract_lat_lon(nmea_sentence, "decimal")
 
         with open(logfile_path, "a") as logfile:
-            #"Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),GPS lat (°),GPS lon (°),Errors,Status\n"
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},,,,,,,,,,,,,,,{gps_lat_lon},None,{pi_state}\n")
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},,,,,,,,,,,,,,,None,{pi_state}\n")
 
         if altitude > start_altitude + 10 or (MODE == "groundtest" and len(timestamps) > 5):
             #TODO: also check Gps data
@@ -409,14 +421,13 @@ def main()->None:
             guenther = initialize_guenther()
 
         with open(logfile_path, "a") as logfile:
-            #"Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),GPS lat (°),GPS lon (°),Errors,Status\n"
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,,{gps_lat_lon}{';'.join(errors)},{pi_state}\n")
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,{';'.join(errors)},{pi_state}\n")
         
         status_led.on()
         sleep(1)
 
     rotation_thread = Thread(target=rotation_mechanism, args=())
-    rotation_thread.start()
+    # rotation_thread.start()
     start_recording()
     print("CanSat has started falling")
 
@@ -474,7 +485,7 @@ def main()->None:
 
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
-                if altitude < start_altitude + 10 or (MODE == "groundtest" and len(timestamps) > 15):
+                if (MODE != "groundtest" and altitude < start_altitude + 10) or (MODE == "groundtest" and len(timestamps) > 15):
                     pi_state = "landed"
 
             # acceleration can only be calculated after 3 height measures
@@ -511,8 +522,7 @@ def main()->None:
             guenther = initialize_guenther()
         
         with open(logfile_path, "a") as logfile:
-            #"Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),GPS lat (°),GPS lon (°),Errors,Status\n"
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,,,{';'.join(errors)},{pi_state}\n")
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,{';'.join(errors)},{pi_state}\n")
         
         status_led.on()
         sleep(1)
@@ -531,12 +541,16 @@ def main()->None:
         status_led.off()
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
+        
+        if beeper.is_lit:
+            beeper.off()
+        else:
+            beeper.on()
 
-        #TODO: add a landed mode with coordinates, beeping and stuff
+        #TODO: add a landed mode with coordinates
 
         with open(logfile_path, "a") as logfile:
-            #"Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),GPS lat (°),GPS lon (°),Errors,Status\n"
-            logfile.write(f"{timestamp},,,,,,,,,,,,,,,,,,,,,None,{pi_state}\n")
+            logfile.write(f"{timestamp},,,,,,,,,,,,,,,,,,,None,{pi_state}\n")
 
         try:
             guenther.send(f"(Info) Back on the ground again")
@@ -554,7 +568,7 @@ def main()->None:
                 pass
             
             # fast flashing telling pi is about to shut down
-            Thread(target=blink_onboard, args=(0.05, "shutting down")).start()
+            Thread(target=blink_status, args=([0.05], "shutting down")).start()
             sleep(1)
 
             if GPIO.input(power_button) == GPIO.LOW:
