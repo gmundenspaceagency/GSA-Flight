@@ -27,9 +27,9 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="8.0832384"
-     inkscape:cx="257.81746"
-     inkscape:cy="62.351248"
+     inkscape:zoom="11.431425"
+     inkscape:cx="221.93208"
+     inkscape:cy="66.920789"
      inkscape:window-width="1920"
      inkscape:window-height="974"
      inkscape:window-x="-11"
@@ -143,13 +143,6 @@
        r="1.0424139"
        transform="rotate(-120)" />
     <rect
-       style="fill:none;stroke:#000000;stroke-width:0.060055;stroke-dasharray:none;stroke-opacity:1"
-       id="rect6701"
-       width="2.7307804"
-       height="1.4265383"
-       x="76.186485"
-       y="83.579414" />
-    <rect
        style="fill:none;stroke:#000000;stroke-width:0.435226;stroke-dasharray:none;stroke-opacity:1"
        id="rect6724"
        width="31.356892"
@@ -167,65 +160,6 @@
          style="stroke-width:0.264583"
          x="111.66924"
          y="51.610092">Seite</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:0.682382px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.0511789"
-       x="76.716919"
-       y="84.567024"
-       id="text7556"><tspan
-         sodipodi:role="line"
-         id="tspan7554"
-         style="stroke-width:0.0511789"
-         x="76.716919"
-         y="84.567024">PWR</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:1.06657px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.0799931"
-       x="79.50164"
-       y="84.636292"
-       id="text7586"><tspan
-         sodipodi:role="line"
-         id="tspan7584"
-         style="stroke-width:0.0799931"
-         x="79.50164"
-         y="84.636292">5mm</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:1.06038px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.0795288"
-       x="76.251869"
-       y="83.075447"
-       id="text7637"><tspan
-         sodipodi:role="line"
-         id="tspan7635"
-         style="stroke-width:0.0795288"
-         x="76.251869"
-         y="83.075447">10mm</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:0.877924px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.0658446"
-       x="73.726929"
-       y="86.413414"
-       id="text7641"><tspan
-         sodipodi:role="line"
-         id="tspan7639"
-         style="stroke-width:0.0658446"
-         x="73.726929"
-         y="86.413414">ca. 5mm</tspan></text>
-    <g
-       id="g8552">
-      <path
-         style="fill:none;stroke:#000000;stroke-width:0.1;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
-         d="m 77.098679,85.461439 0.278225,-0.245494 0.360056,0.229127"
-         id="path8459" />
-      <path
-         style="fill:none;stroke:#000000;stroke-width:0.1;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
-         d="m 77.376904,85.248677 v 1.816645"
-         id="path8461" />
-      <path
-         style="fill:none;stroke:#000000;stroke-width:0.1;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
-         d="m 77.098679,86.87678 0.278225,0.245494 0.360056,-0.229127"
-         id="path8463" />
-    </g>
     <g
        id="g8552-7"
        transform="matrix(0.5558885,0,0,0.78887593,34.091154,-6.8776357)">
