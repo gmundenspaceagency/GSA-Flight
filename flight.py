@@ -170,6 +170,13 @@ def initialize_gt_u7()->Optional[Gt_u7]:
         print("Problem with gps: " + str(error))
     return gps
 
+def initialize_gt_u7()->Optional[Gt_u7]:
+    try:
+        gps = Gt_u7()
+    except Exception as error:
+        gps = None
+        print("Problem with gps: " + str(error))
+
 try:
     GPIO.setmode(GPIO.BCM)
 
@@ -273,7 +280,9 @@ def rotation_mechanism() -> None:
             print("Error in rotation mechanism: " + str(error))
 
 def main()->None:
-    global pi_state, ads1115, bme280, mpu6050, guenther, camera, gps
+
+    global pi_state, ads1115, bme280, mpu6050, guenther, camera, multiplexer, gps
+
 
     start_time = datetime.datetime.now()
     start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
