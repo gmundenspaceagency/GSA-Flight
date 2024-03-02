@@ -43,7 +43,7 @@ class Rak4200:
 
         self.baudrate = baudrate
         self.serial_port = serial_port
-        self.uart0 = serial.Serial(serial_port, baudrate=baudrate, timeout=None)
+        self.uart0 = serial.Serial(serial_port, baudrate=baudrate, timeout=1)
         # wait for serial port connection to be established
         time.sleep(1)
 
