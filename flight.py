@@ -398,7 +398,7 @@ def main()->None:
         timestamps.append(timestamp)
         
         if camera is not None:
-            camera = initialize_camera
+            camera = initialize_camera()
             start_recording()
 
         if len(timestamps) > 1:
@@ -434,15 +434,6 @@ def main()->None:
                 vertical_acceleration = round((vertical_speed - vertical_speeds[-2]) / time_difference, 3)
                 vertical_accelerations.append(vertical_acceleration)
 
-                try:
-                    #TODO: check if at least one has light in case of 1 being broken
-                    light1 = round(light1.luminance(Bh1750.ONCE_LOWRES), 4)
-                except Exception as error:
-                    light1 = 0
-                #TODO: add max time and also gps height
-                if (avg_bme_vertical_speed < -2 and vertical_acceleration < 0 and light1 > 20) or (MODE == "groundtest" and len(timestamps) > 10):
-                    #TODO check for lighsensors
-                    pi_state = "descending"  
 
                 print(f"Acceleration: {vertical_acceleration}m/s^2, Average acceleration: {avg_vertical_acceleration}m/s^2")
         except Exception as error:
@@ -464,6 +455,40 @@ def main()->None:
             # try to contact sensor again
             mpu6050 = initialize_mpu6050()
         
+        try:
+            luminance1 = round(light1.luminance(Bh1750.ONCE_LOWRES), 4)
+        except Exception as error:
+            luminance1 = 0
+            light1 = initialize_light1()
+
+        try:
+            set_multiplexer_channel(7)
+            luminance2 = round(light2n3.luminance(Bh1750.ONCE_LOWRES), 4)
+            set_multiplexer_channel(6)
+            luminance3 = round(light2n3.luminance(Bh1750.ONCE_LOWRES), 4)
+        except Exception as error:
+            # try to contact sensor again
+            luminance2 = 0
+            luminance3 = 0
+            light2n3 = initialize_light2n3()
+        
+        if luminance1 is not None and luminance2 is not None and luminance3 is not None:
+            highest_luminance = max([luminance1, luminance3, luminance2])
+        else:
+            highest_luminance = 0
+        
+        try:
+            nmea_sentence = gps.serialPort.readline().decode().strip()
+            gps_lat_lon = gps.extract_lat_lon(nmea_sentence, "decimal")
+            gps_altitude = gps.extract_altitude
+            gps_speed = gps.extract_velocity(nmea_sentence)
+        except Exception as error:
+            gps = initialize_gt_u7()
+
+        #TODO: add max time and also gps height
+        if (gps_speed and avg_bme_vertical_speed < -2 and vertical_acceleration < 0 and highest_luminance > 20) or (MODE == "groundtest" and len(timestamps) > 10):
+            #TODO check for lighsensors
+            pi_state = "descending"  
         try:
             guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{temperature}")
         except Exception as error:
