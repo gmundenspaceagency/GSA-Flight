@@ -322,6 +322,7 @@ def main()->None:
         start_bme_altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
     except Exception as error:
         try:
+            #TODO: error code statt ganzes teil senden + printen
             guenther.send(f"(Error) BME280 sensor not working: {error}")
         except Exception as error:
             guenther = initialize_guenther()
@@ -333,6 +334,7 @@ def main()->None:
         start_gps_altitude = gps.extract_altitude(nmea_sentence)
     except Exception as error:
         try:
+            #TODO: error code statt ganzes teil senden + printen
             guenther.send(f"(Error) GPS sensor not working: {error}")
         except Exception as error:
             guenther = initialize_guenther()
@@ -356,8 +358,8 @@ def main()->None:
         bme_altitudes.append(bme_altitude)
         temperature = round(float(bme280.temperature), 2)
         humidity = round(float(bme280.humidity) / 100, 2)
-        nmea_sentence = gps.serialPort.readline().decode().strip()
         try:
+            nmea_sentence = gps.serialPort.readline().decode().strip()
             gps_lat_lon = gps.extract_lat_lon(nmea_sentence, "decimal")
             gps_altitude = gps.extract_altitude
         except Exception as error:
@@ -370,8 +372,10 @@ def main()->None:
             start_bme_altitude = bme_altitude
 
         with open(logfile_path, "a") as logfile:
+            #TODO: gps daten loggen
             logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},,,,,,,,,,,,,,,{gps_lat_lon},None,{pi_state}\n")
 
+        #TODO: wenn gps geht dann Gps beforzugen
         if (bme_altitude > start_bme_altitude + 10 and gps_altitude > start_gps_altitude + 10) or (MODE == "groundtest" and len(timestamps) > 5):
             pi_state = "ascending"
         
@@ -430,8 +434,12 @@ def main()->None:
                 vertical_acceleration = round((vertical_speed - vertical_speeds[-2]) / time_difference, 3)
                 vertical_accelerations.append(vertical_acceleration)
 
-                light1 = round(light1.luminance(Bh1750.ONCE_LOWRES), 4)
-
+                try:
+                    #TODO: check if at least one has light in case of 1 being broken
+                    light1 = round(light1.luminance(Bh1750.ONCE_LOWRES), 4)
+                except Exception as error:
+                    light1 = 0
+                #TODO: add max time and also gps height
                 if (avg_bme_vertical_speed < -2 and vertical_acceleration < 0 and light1 > 20) or (MODE == "groundtest" and len(timestamps) > 10):
                     #TODO check for lighsensors
                     pi_state = "descending"  
@@ -561,6 +569,7 @@ def main()->None:
         except Exception as error:
             #TODO report error to groundstation or in logs?
             gps = initialize_gt_u7()
+        #gps mehr gewichten
         if (MODE != "groundtest" and bme_altitude < start_bme_altitude + 5 and gps_altitude < start_gps_altitude + 5) or timestamp - start_descending_timestamp > 300000 or (MODE == "groundtest" and len(timestamps) > 15):
                     pi_state = "landed"
                 
