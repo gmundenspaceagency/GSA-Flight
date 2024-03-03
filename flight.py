@@ -24,7 +24,6 @@ from tests import CircularPIDController
 """
 Allgemeine ToDos:
 - Programm stoppt einfach wenn guenther nicht gefunden wird (timeout?)
-- Die mindest Höhe erhöhen und überall gleich machen
 - GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
     - GPS Höhendaten mit dem bme280280 Daten abgleichen
 - Temperaturdaten von GYRO und bme280280 abgleichen
@@ -298,11 +297,11 @@ def main()->None:
     start_perf = round(perf_counter() * 1000)
     # TODO: realistische iteration time
     timestamps = []
-    altitudes = []
+    bme_altitudes = []
     vertical_speeds = []
     vertical_accelerations = []
     max_iteration_time = 1000
-    start_altitude = 266.0
+    fake_start_altitude = 266.0
     
     log_dir = f"/home/gsa202324/GSA-Flight/log/flightlog_{start_time_str}/"
     os.mkdir(log_dir)
@@ -317,11 +316,28 @@ def main()->None:
                 camera.start_recording(video_output)
             except Exception as error:
                 print("Error in camera recording: " + str(error))
+    try:
+        bme280.update_sensor()
+        pressure = round(float(bme280.pressure), 2)
+        start_bme_altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
+    except Exception as error:
+        try:
+            guenther.send(f"(Error) BME280 sensor not working: {error}")
+        except Exception as error:
+            guenther = initialize_guenther()
+
+        start_bme_altitude = fake_start_altitude
     
-    bme280.update_sensor()
-    pressure = round(float(bme280.pressure), 2)
-    altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
-    start_altitude = altitude
+    try:
+        nmea_sentence = gps.serialPort.readline().decode().strip()
+        start_gps_altitude = gps.extract_altitude(nmea_sentence)
+    except Exception as error:
+        try:
+            guenther.send(f"(Error) GPS sensor not working: {error}")
+        except Exception as error:
+            guenther = initialize_guenther()
+        
+        start_gps_altitude = fake_start_altitude
 
     logfile_path = log_dir + "datalog.csv"
 
@@ -336,18 +352,27 @@ def main()->None:
         timestamps.append(timestamp)
         bme280.update_sensor()
         pressure = round(float(bme280.pressure), 2)
-        altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
-        altitudes.append(altitude)
+        bme_altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
+        bme_altitudes.append(bme_altitude)
         temperature = round(float(bme280.temperature), 2)
         humidity = round(float(bme280.humidity) / 100, 2)
         nmea_sentence = gps.serialPort.readline().decode().strip()
-        gps_lat_lon = gps.extract_lat_lon(nmea_sentence, "decimal")
+        try:
+            gps_lat_lon = gps.extract_lat_lon(nmea_sentence, "decimal")
+            gps_altitude = gps.extract_altitude
+        except Exception as error:
+            gps = initialize_gt_u7()
+
+        if start_gps_altitude == fake_start_altitude:
+            start_gps_altitude = gps_altitude
+        
+        if start_bme_altitude == fake_start_altitude:
+            start_bme_altitude = bme_altitude
 
         with open(logfile_path, "a") as logfile:
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},,,,,,,,,,,,,,,{gps_lat_lon},None,{pi_state}\n")
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},,,,,,,,,,,,,,,{gps_lat_lon},None,{pi_state}\n")
 
-        if altitude > start_altitude + 10 or (MODE == "groundtest" and len(timestamps) > 5):
-            #TODO: also check Gps data
+        if (bme_altitude > start_bme_altitude + 10 and gps_altitude > start_gps_altitude + 10) or (MODE == "groundtest" and len(timestamps) > 5):
             pi_state = "ascending"
         
         try:
@@ -359,12 +384,19 @@ def main()->None:
         status_led.on()
         sleep(1)
 
+    start_recording()
+
+
     while pi_state == "ascending":
         status_led.off()
         errors = []
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
         
+        if camera is not None:
+            camera = initialize_camera
+            start_recording()
+
         if len(timestamps) > 1:
             time_difference = timestamp - timestamps[-2]
             
@@ -373,7 +405,7 @@ def main()->None:
                 errors.append(f"Warning: Single iteration in descent took more than {max_iteration_time}ms (took {time_difference}ms)")
         
         # X means they were not set yet
-        pressure = temperature = altitude = humidity = vertical_speed = vertical_acceleration = "X"
+        pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = "X"
         acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = "X"
         
         try:
@@ -381,27 +413,28 @@ def main()->None:
             pressure = round(float(bme280.pressure), 2)
             temperature = round(float(bme280.temperature), 2)
             humidity = round(float(bme280.humidity) / 100, 2)
-            altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
-            altitudes.append(altitude)
+            bme_altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
+            bme_altitudes.append(bme_altitude)
             print(f"Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%")
 
             # speed can only be calculated after 2 height measures
             if len(timestamps) > 1:
                 avg_over = 5
-                avg_vertical_speed = round(sum(vertical_speeds[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
-                vertical_speed = round((altitude - altitudes[-2]) / time_difference * 1000, 2)
+                avg_bme_vertical_speed = round(sum(vertical_speeds[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
+                vertical_speed = round((bme_altitude - bme_altitudes[-2]) / time_difference * 1000, 2)
                 vertical_speeds.append(vertical_speed)
-                print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
-
-                if avg_vertical_speed < -2 or (MODE == "groundtest" and len(timestamps) > 10):
-                    #TODO check for lighsensors
-                    pi_state = "descending"        
-
+                print(f"Altitude: {bme_altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_bme_vertical_speed}m/s")      
             # acceleration can only be calculated after 3 height measures
             if len(timestamps) > 2:
                 avg_vertical_acceleration = round(sum(vertical_accelerations[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
                 vertical_acceleration = round((vertical_speed - vertical_speeds[-2]) / time_difference, 3)
                 vertical_accelerations.append(vertical_acceleration)
+
+                light1 = round(light1.luminance(Bh1750.ONCE_LOWRES), 4)
+
+                if (avg_bme_vertical_speed < -2 and vertical_acceleration < 0 and light1 > 20) or (MODE == "groundtest" and len(timestamps) > 10):
+                    #TODO check for lighsensors
+                    pi_state = "descending"  
 
                 print(f"Acceleration: {vertical_acceleration}m/s^2, Average acceleration: {avg_vertical_acceleration}m/s^2")
         except Exception as error:
@@ -430,17 +463,17 @@ def main()->None:
             guenther = initialize_guenther()
 
         with open(logfile_path, "a") as logfile:
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,{gps_lat_lon},{';'.join(errors)},{pi_state}\n")
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,{gps_lat_lon},{';'.join(errors)},{pi_state}\n")
         
         status_led.on()
         sleep(1)
 
     rotation_thread = Thread(target=rotation_mechanism, args=())
     # rotation_thread.start()
-    start_recording()
     print("CanSat has started falling")
 
     while pi_state == "descending":
+        start_descending_timestamp = round(perf_counter() * 1000 - start_perf)
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
         status_led.off()
@@ -457,7 +490,7 @@ def main()->None:
                 print(f"Warning: Single iteration took more than {max_iteration_time}ms (took {time_difference}ms)")
 
         # X means they were not set yet
-        pressure = temperature = altitude = humidity = vertical_speed = vertical_acceleration = luminance1 = luminance2 = luminance3 = "X"
+        pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = luminance1 = luminance2 = luminance3 = "X"
         acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = "X"
 
         print(f"Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}")
@@ -479,8 +512,8 @@ def main()->None:
             pressure = round(float(bme280.pressure), 2)
             temperature = round(float(bme280.temperature), 2)
             humidity = round(float(bme280.humidity) / 100, 2)
-            altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
-            altitudes.append(altitude)
+            bme_altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
+            bme_altitudes.append(bme_altitude)
 
             print(f"Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%")
 
@@ -488,14 +521,11 @@ def main()->None:
             if len(timestamps) > 1:
                 avg_over = 5
 
-                avg_vertical_speed = round(sum(vertical_speeds[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
-                vertical_speed = round((altitude - altitudes[-2]) / time_difference * 1000, 2)
+                avg_bme_vertical_speed = round(sum(vertical_speeds[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
+                vertical_speed = round((bme_altitude - bme_altitudes[-2]) / time_difference * 1000, 2)
                 vertical_speeds.append(vertical_speed)
 
-                print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
-
-                if (MODE != "groundtest" and altitude < start_altitude + 10) or (MODE == "groundtest" and len(timestamps) > 15):
-                    pi_state = "landed"
+                print(f"Altitude: {bme_altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_bme_vertical_speed}m/s")
 
             # acceleration can only be calculated after 3 height measures
             if len(timestamps) > 2:
@@ -523,7 +553,17 @@ def main()->None:
         except Exception as error:
             # try to contact sensor again
             mpu6050 = initialize_mpu6050()
-        
+
+        try:
+            nmea_sentence = gps.serialPort.readline().decode().strip()
+            gps_altitude = gps.extract_altitude(nmea_sentence)
+            gps_lat_lon = gps.extract_lat_lon(nmea_sentence, "decimal")
+        except Exception as error:
+            #TODO report error to groundstation or in logs?
+            gps = initialize_gt_u7()
+        if (MODE != "groundtest" and bme_altitude < start_bme_altitude + 5 and gps_altitude < start_gps_altitude + 5) or timestamp - start_descending_timestamp > 300000 or (MODE == "groundtest" and len(timestamps) > 15):
+                    pi_state = "landed"
+                
         try:
             guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{temperature}")
         except Exception as error:
@@ -531,7 +571,7 @@ def main()->None:
             guenther = initialize_guenther()
         
         with open(logfile_path, "a") as logfile:
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,{gps_lat_lon},{';'.join(errors)},{pi_state}\n")
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,{gps_lat_lon},{';'.join(errors)},{pi_state}\n")
         
         status_led.on()
         sleep(1)
