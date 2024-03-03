@@ -24,6 +24,7 @@ from tests import CircularPIDController
 """
 Allgemeine ToDos:
 - Programm stoppt einfach wenn guenther nicht gefunden wird (timeout?)
+- Die mindest Höhe erhöhen und überall gleich machen
 - GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
     - GPS Höhendaten mit dem bme280280 Daten abgleichen
 - Temperaturdaten von GYRO und bme280280 abgleichen
@@ -393,6 +394,7 @@ def main()->None:
                 print(f"Altitude: {altitude}m, Speed: {vertical_speed}m/s, Average speed: {avg_vertical_speed}m/s")
 
                 if avg_vertical_speed < -2 or (MODE == "groundtest" and len(timestamps) > 10):
+                    #TODO check for lighsensors
                     pi_state = "descending"        
 
             # acceleration can only be calculated after 3 height measures
