@@ -390,6 +390,7 @@ def main()->None:
 
     start_recording()
 
+    start_ascend_timestamp = round(perf_counter() * 1000 - start_perf)
 
     while pi_state == "ascending":
         status_led.off()
@@ -486,7 +487,7 @@ def main()->None:
             gps = initialize_gt_u7()
 
         #TODO: add max time and also gps height
-        if (gps_speed and avg_bme_vertical_speed < -2 and vertical_acceleration < 0 and highest_luminance > 20) or (MODE == "groundtest" and len(timestamps) > 10):
+        if (gps_speed and avg_bme_vertical_speed < -2 and vertical_acceleration < 0 and highest_luminance > 20) or timestamp - start_ascend_timestamp > 10000 or (MODE == "groundtest" and len(timestamps) > 10):
             #TODO check for lighsensors
             pi_state = "descending"  
         try:
