@@ -361,7 +361,7 @@ def main()->None:
         try:
             nmea_sentence = gps.serialPort.readline().decode().strip()
             gps_lat_lon = gps.extract_lat_lon(nmea_sentence, "decimal")
-            gps_altitude = gps.extract_altitude
+            gps_altitude = gps.extract_altitude(nmea_sentence)
         except Exception as error:
             gps = initialize_gt_u7()
 
@@ -480,7 +480,7 @@ def main()->None:
         try:
             nmea_sentence = gps.serialPort.readline().decode().strip()
             gps_lat_lon = gps.extract_lat_lon(nmea_sentence, "decimal")
-            gps_altitude = gps.extract_altitude
+            gps_altitude = gps.extract_altitude(nmea_sentence)
             gps_speed = gps.extract_velocity(nmea_sentence)
         except Exception as error:
             gps = initialize_gt_u7()
@@ -504,9 +504,9 @@ def main()->None:
     rotation_thread = Thread(target=rotation_mechanism, args=())
     # rotation_thread.start()
     print("CanSat has started falling")
+    start_descending_timestamp = round(perf_counter() * 1000 - start_perf)
 
     while pi_state == "descending":
-        start_descending_timestamp = round(perf_counter() * 1000 - start_perf)
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
         status_led.off()
@@ -595,7 +595,7 @@ def main()->None:
             #TODO report error to groundstation or in logs?
             gps = initialize_gt_u7()
         #gps mehr gewichten
-        if (MODE != "groundtest" and bme_altitude < start_bme_altitude + 5 and gps_altitude < start_gps_altitude + 5) or timestamp - start_descending_timestamp > 300000 or (MODE == "groundtest" and len(timestamps) > 15):
+        if (MODE != "groundtest" and bme_altitude < start_bme_altitude + 5 and gps_altitude < start_gps_altitude + 5) or timestamp - start_descending_timestamp > 30000 or (MODE == "groundtest" and len(timestamps) > 15):
                     pi_state = "landed"
                 
         try:
