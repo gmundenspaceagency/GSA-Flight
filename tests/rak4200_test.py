@@ -4,10 +4,12 @@ sys.path.append('..')
 from gsa_components.rak4200 import Rak4200
 import string
 import random
+import platform
 
-mode = 'send' # send or receive
+mode = 'send'
+mode = 'send' if platform.machine() == 'armv61' else 'receive'
 
-if mode == 'send':
+if mode == 'receive':
     rak = Rak4200(serial_port='/dev/ttyUSB0')
     rak.start('receive')
     print('RAK4200 connected, receiving messages...')
@@ -42,7 +44,7 @@ if mode == 'send':
         print(f'AVERAGE NOISE: {average_noise}')
         print(f'AVERAGE SIGNAL STRENGTH: {average_strength}')
 
-if mode == 'receive':
+if mode == 'send':
     test = Rak4200(serial_port='/dev/ttyS0')
     test.set_mode('send')
     print('RAK4200 connected, sending test data...')
