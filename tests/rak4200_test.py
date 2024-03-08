@@ -2,12 +2,10 @@ from time import sleep, perf_counter
 import sys
 sys.path.append('..')
 from gsa_components.rak4200 import Rak4200
-import string
 import random
 import platform
 
-mode = 'send'
-mode = 'send' if platform.machine() == 'armv61' else 'receive'
+mode = 'send' if platform.machine() == 'armv6l' else 'receive'
 
 if mode == 'receive':
     rak = Rak4200(serial_port='/dev/ttyUSB0')
@@ -45,16 +43,16 @@ if mode == 'receive':
         print(f'AVERAGE SIGNAL STRENGTH: {average_strength}')
 
 if mode == 'send':
-    test = Rak4200(serial_port='/dev/ttyS0')
-    test.set_mode('send')
+    rak = Rak4200(serial_port='/dev/ttyS0')
+    rak.set_mode('send')
     print('RAK4200 connected, sending test data...')
     index = 0
-    s = string.lowercase+string.digits
+    send_timeout = 0.5
 
     while True:
-        random_stuff = ''.join(random.sample(s, 10))
-        message = f'{index};{random_stuff}'
+        filler = ''.join(['a'] * 10)
+        message = f'{index};{filler}'
         rak.send(message)
         index += 1
         print(f'Sent message {index}')
-        
+        sleep(send_timeout)
