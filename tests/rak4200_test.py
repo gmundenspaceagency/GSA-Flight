@@ -1,8 +1,8 @@
 from time import sleep, perf_counter
 import sys
 sys.path.append('..')
+sys.path.append('.')
 from gsa_components.rak4200 import Rak4200
-import random
 import platform
 
 mode = 'send' if platform.machine() == 'armv6l' else 'receive'
@@ -27,14 +27,13 @@ if mode == 'receive':
                 strenghts.append(data['signal_strength'])
                 noises.append(data['noise'])
                 received += 1
-
                 print(f'Received: {data} (lost: {last_index - received}, total: {last_index})')
     except KeyboardInterrupt:
         end = perf_counter()
         average_strength = round(sum(strenghts) / received, 2)
         average_noise = round(sum(noises) / received, 2)
         print('------------RESULT------------')
-        print(f'LISTENED FOR: {end - start}s')
+        print(f'LISTENED FOR: {round(end - start, 2)}s')
         print(f'RECEIVED: {received}')
         print(f'LOST: {last_index - received}')
         print(f'TOTAL: {last_index}')
@@ -53,6 +52,6 @@ if mode == 'send':
         filler = ''.join(['a'] * 10)
         message = f'{index};{filler}'
         rak.send(message)
-        index += 1
         print(f'Sent message {index}')
+        index += 1
         sleep(send_timeout)
