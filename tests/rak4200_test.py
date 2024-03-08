@@ -1,4 +1,6 @@
 from time import sleep, perf_counter
+import sys
+sys.path.append('..')
 from gsa_components.rak4200 import Rak4200
 import string
 import random
