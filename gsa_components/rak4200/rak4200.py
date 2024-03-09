@@ -115,6 +115,9 @@ class Rak4200:
         currentTime = datetime.now()
         currentTimeStr = currentTime.strftime('%H:%M:%S')
 
+        # wait for module to process information
+        time.sleep(1)
+
         if self.mode == 'send':
             self.send('(Info) RAK4200 is ready at: ' + currentTimeStr)
     
