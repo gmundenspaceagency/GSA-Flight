@@ -16,7 +16,7 @@ Parameters:
     - preamble_length (int): Preamble length. Range: 5 to 65535. Default is 8.
     - tx_power (int): Transmit power in dBm. Range: 5 to 20. Default is 20.
 """
-parameters = (869.525, 7, 1, 1, 8, 20)
+parameters = (860.525, 7, 0, 4, 64, 20)
 
 send_timeout = 0.5 # only for sending
 
@@ -25,7 +25,7 @@ if mode == 'receive':
     rak.set_p2p_config(*parameters)
     rak.start('receive')
     print('RAK4200 connected, receiving messages...')
-    received = last_index = 0
+    received = last_index = start_index = 0
     strenghts = []
     noises = []
     start = perf_counter()
@@ -35,24 +35,29 @@ if mode == 'receive':
             data = rak.receive()
 
             if data is not None:
-                if received == 0:
-                    start = perf_counter()
-                
-                if not '(Info)' in data['message']:
-                    last_index = int(data['message'].split(';')[0])
-                    strenghts.append(data['signal_strength'])
-                    noises.append(data['noise'])
-                    received += 1
-                    print(f'Received: {data} (lost: {last_index - received}, total: {last_index})')
-                else:
-                    print(data['message'])
+                try:
+                    if received == 0:
+                        start = perf_counter()
+                    
+                    if not '(Info)' in data['message']:
+                        last_index = int(data['message'].split(';')[0])
+                        if start_index == 0:
+                            start_index = last_index
+                        last_index -= start_index - 1
+                        strenghts.append(data['signal_strength'])
+                        noises.append(data['noise'])
+                        received += 1
+                        print(f'Received: {data} (lost: {last_index - received}, total: {last_index})')
+                    else:
+                        print(data['message'])
+                except Exception as error:
+                    print(error, data)
                 
 
     except KeyboardInterrupt:
         rak.sleep()
         end = perf_counter()
         average_strength = round(sum(strenghts) / received, 2)
-        print(noises)
         average_noise = round(sum(noises) / received, 2)
         print('\n\n------------RESULT------------')
         print(f'LISTENED FOR: {round(end - start, 2)}s')
