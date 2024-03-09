@@ -44,8 +44,12 @@ class Rak4200:
         self.baudrate = baudrate
         self.serial_port = serial_port
         self.uart0 = serial.Serial(serial_port, baudrate=baudrate, timeout=1)
-        # wait for serial port connection to be established
-        time.sleep(1)
+    
+    def sleep(self:any)->None:
+        self.sendAtCMD('at+set_config=device:sleep:1')
+    
+    def wake_up(self:any)->None:
+        self.parse_response(self.sendAtCMD('at+set_config=device:sleep:0'))
 
     def sendAtCMD(self:any, at_cmd:str)->Optional[str]:
         self.uart0.write((at_cmd + '\r\n').encode())
@@ -110,6 +114,8 @@ class Rak4200:
 
     def start(self:any, mode:str)->None:
         self.set_mode(mode)
+        self.wake_up()
+
         # Setting bandwidth to 1 (250kHz) for faster data transmission and spread factor to 7 (obligatory in Europe when using 250kHz)
         # self.set_p2p_config(bandwidth=1, spreadfact=7)
         currentTime = datetime.now()
@@ -124,6 +130,9 @@ class Rak4200:
     def send(self:any, data:str)->None:
         if self.mode != 'send':
             self.set_mode('send')
+        
+        if len(data) > 119:
+            raise ValueError('Data must be shorter than 120 characters')
 
         # self.uart0.write(f'at+send=lorap2p:{data.encode('utf-8').hex()}\r\n') ??
         self.uart0.write(('at+send=lorap2p:' + data.encode('utf-8').hex() + '\r\n').encode())

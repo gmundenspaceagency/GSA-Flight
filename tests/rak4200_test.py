@@ -16,14 +16,14 @@ Parameters:
     - preamble_length (int): Preamble length. Range: 5 to 65535. Default is 8.
     - tx_power (int): Transmit power in dBm. Range: 5 to 20. Default is 20.
 """
-parameters = (869.525, 7, 0, 1, 8, 20)
+parameters = (869.525, 7, 1, 1, 8, 20)
 
 send_timeout = 0.5 # only for sending
 
 if mode == 'receive':
     rak = Rak4200(serial_port='/dev/ttyUSB0')
-    rak.start('receive')
     rak.set_p2p_config(*parameters)
+    rak.start('receive')
     print('RAK4200 connected, receiving messages...')
     received = last_index = 0
     strenghts = []
@@ -49,6 +49,7 @@ if mode == 'receive':
                 
 
     except KeyboardInterrupt:
+        rak.sleep()
         end = perf_counter()
         average_strength = round(sum(strenghts) / received, 2)
         print(noises)
@@ -64,8 +65,8 @@ if mode == 'receive':
 
 if mode == 'send':
     rak = Rak4200(serial_port='/dev/ttyS0')
-    rak.start('send')
     rak.set_p2p_config(*parameters)
+    rak.start('send')
     print('RAK4200 connected, sending test data...')
     index = 1
 
