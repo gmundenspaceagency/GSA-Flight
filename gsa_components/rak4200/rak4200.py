@@ -111,12 +111,9 @@ class Rak4200:
     def start(self:any, mode:str)->None:
         self.set_mode(mode)
         # Setting bandwidth to 1 (250kHz) for faster data transmission and spread factor to 7 (obligatory in Europe when using 250kHz)
-        self.set_p2p_config(bandwidth=1, spreadfact=7)
+        # self.set_p2p_config(bandwidth=1, spreadfact=7)
         currentTime = datetime.now()
         currentTimeStr = currentTime.strftime('%H:%M:%S')
-
-        # wait for module to process information
-        time.sleep(1)
 
         if self.mode == 'send':
             self.send('(Info) RAK4200 is ready at: ' + currentTimeStr)
