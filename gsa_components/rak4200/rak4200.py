@@ -117,6 +117,9 @@ class Rak4200:
 
         if self.mode == 'send':
             self.send('(Info) RAK4200 is ready at: ' + currentTimeStr)
+        
+        # wait for module to process information
+        time.sleep(1)
     
     def send(self:any, data:str)->None:
         if self.mode != 'send':
