@@ -18,6 +18,7 @@ from gsa_components.multiplexer import Multiplexer
 from gsa_components.bh1750 import Bh1750
 from gsa_components.motor import StepperMotor
 from gsa_components.rak4200 import Rak4200
+from gsa_components.gt_u7 import Gt_u7
 from tests import CircularPIDController
 
 """
