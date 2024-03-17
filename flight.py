@@ -345,7 +345,7 @@ def main()->None:
     with open(logfile_path, "a") as logfile:
         logfile.write(f"Teamname: Gmunden Space Agency, CanSat Flight Logfile at: {start_time}\n")
         logfile.write("\n")
-        logfile.write("Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),Errors,Status\n")
+        logfile.write("Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),Gps Lat and Lon (°),Errors,Status\n")
 
     while pi_state == "ground_level":
         status_led.off()
@@ -627,7 +627,7 @@ def main()->None:
 
         #TODO: add a landed mode with coordinates
         with open(logfile_path, "a") as logfile:
-            logfile.write(f"{timestamp},,,,,,,,,,,,,,,,,,,None,{pi_state}\n")
+            logfile.write(f"{timestamp},,,,,,,,,,,,,,,,,,{gps_lat_lon},None,{pi_state}\n")
 
         try:
             guenther.send(f"(Info) Back on the ground again")

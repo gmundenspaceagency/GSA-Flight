@@ -17,9 +17,9 @@ class Gt_u7:
                         if data_type == 'decimal':
                             lat_decimal = self.lat_convert_to_decimal(latitude)
                             lon_decimal = self.lon_convert_to_decimal(longitude)
-                            print("lat,lon:", lat_decimal, lon_decimal)
+                            print(lat_decimal, lon_decimal, sep=",")
                         if data_type == 'dms':
-                            print("lat,lon:", latitude, longitude)
+                            print(latitude, longitude, sep=",")
                 except pynmea2.ParseError as e:
                     print('Parse error: {}'.format(e))
 
