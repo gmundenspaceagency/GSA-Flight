@@ -318,6 +318,8 @@ def main()->None:
                 print("Error in camera recording: " + str(error))
     try:
         bme280.update_sensor()
+        sleep(1)
+        bme280.update_sensor()
         pressure = round(float(bme280.pressure), 2)
         start_bme_altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
     except Exception as error:
