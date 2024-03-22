@@ -5,7 +5,7 @@ class Gt_u7:
     def __init__(self, port='/dev/ttyACM0', baud=9600):
         self.serialPort = serial.Serial(port, baudrate=baud, timeout=1)
     
-    def extract_lat(nmea_sentence):
+    def extract_lat(self, nmea_sentence):
         msg = pynmea2.parse(nmea_sentence)
         return msg.lat
 
