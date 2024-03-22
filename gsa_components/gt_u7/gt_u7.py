@@ -14,7 +14,7 @@ class Gt_u7:
             longitude = getattr(nx,'lon', "Unknown")
             print ("Your position: lon = " + str(longitude) + ", lat = " + str(latitude))
 
-        gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
+    gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
 
     while True:
         getPositionData(gpsd)
