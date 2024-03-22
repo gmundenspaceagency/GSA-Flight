@@ -13,17 +13,11 @@ class Gt_u7:
         nx = gpsd.next()
         if nx['class'] == 'TPV':
             longitude = getattr(nx,'lon', "Unknown")
-            return longitude
-        
-    def getPositionData(self, gpsd):
-        nx = gpsd.next()
-        if nx['class'] == 'TPV':
-            latitude = getattr(nx,'lat', "Unknown")
-            longitude = getattr(nx,'lon', "Unknown")
-            print ("Your position: lon = " + str(longitude) + ", lat = " + str(latitude))
-    
-gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-gt_u7 = Gt_u7()
-while True:
-    print(gt_u7.get_lon(gpsd))
-    time.sleep(1.0)
+            return str(longitude)
+
+if __name__ == "__main__":
+    gt_u7 = Gt_u7()
+    gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
+    print(gt_u7.get_lat)
+    print(gt_u7.get_lon)
+    time.sleep(1)
