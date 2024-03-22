@@ -14,7 +14,13 @@ class Gt_u7:
         if nx['class'] == 'TPV':
             longitude = getattr(nx,'lon', "Unknown")
             return str(longitude)
-    
+        
+    def getPositionData(self, gpsd):
+        nx = gpsd.next()
+        if nx['class'] == 'TPV':
+            latitude = getattr(nx,'lat', "Unknown")
+            longitude = getattr(nx,'lon', "Unknown")
+            print ("Your position: lon = " + str(longitude) + ", lat = " + str(latitude))
     
     def extract_lat(self):
         nmea_sentence = gt_u7.serialPort.readline().decode().strip()
@@ -101,4 +107,5 @@ if __name__ == "__main__":
         gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
         print("lat:", gt_u7.get_lat(gpsd))
         print("lon", gt_u7.get_lon(gpsd))
+        gt_u7.getPositionData
         time.sleep(1.0)
