@@ -3,13 +3,13 @@ import time
 
 class Gt_u7:
 
-    def get_lat(gpsd):
+    def get_lat(self, gpsd):
         nx = gpsd.next()
         if nx['class'] == 'TPV':
             latitude = getattr(nx,'lat', "Unknown")
             return str(latitude)
 
-    def get_lon(gpsd):
+    def get_lon(self, gpsd):
         nx = gpsd.next()
         if nx['class'] == 'TPV':
             longitude = getattr(nx,'lon', "Unknown")
