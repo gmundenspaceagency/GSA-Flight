@@ -18,6 +18,7 @@ class Gt_u7:
 if __name__ == "__main__":
     gt_u7 = Gt_u7()
     gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-    print(gt_u7.get_lat)
-    print(gt_u7.get_lon)
-    time.sleep(1)
+    while True:
+        print(gt_u7.get_lat(gpsd))
+        print(gt_u7.get_lon(gpsd))
+        time.sleep(1)
