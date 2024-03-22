@@ -9,6 +9,7 @@ from typing import Optional
 from threading import Thread
 from gpiozero import LED
 from time import sleep, perf_counter
+from gps import *
 
 # pimoroni-bme280 1.0.0
 from bme280 import BME280
@@ -318,6 +319,8 @@ def main()->None:
                 print("Error in camera recording: " + str(error))
     try:
         bme280.update_sensor()
+        sleep(1)
+        bme280.update_sensor()
         pressure = round(float(bme280.pressure), 2)
         start_bme_altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
     except Exception as error:
@@ -358,10 +361,12 @@ def main()->None:
         bme_altitudes.append(bme_altitude)
         temperature = round(float(bme280.temperature), 2)
         humidity = round(float(bme280.humidity) / 100, 2)
+        
         try:
-            nmea_sentence = gps.serialPort.readline().decode().strip()
-            gps_lat_lon = gps.extract_lat_lon(nmea_sentence, "decimal")
-            gps_altitude = gps.extract_altitude(nmea_sentence)
+            gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
+            gps_lat = Gt_u7.get_lat(gpsd)
+            gps_lon = Gt_u7.get_lon(gpsd)
+            gps_altitude = Gt_u7.get_altitude(gpsd)
         except Exception as error:
             gps = initialize_gt_u7()
 
@@ -373,7 +378,7 @@ def main()->None:
 
         with open(logfile_path, "a") as logfile:
             #TODO: gps daten loggen
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},,,,,,,,,,,,,,,{gps_lat_lon},None,{pi_state}\n")
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},,,,,,,,,,,,,,,{gps_lat},{gps_lon},None,{pi_state}\n")
 
         #TODO: wenn gps geht dann Gps beforzugen
         if (bme_altitude > start_bme_altitude + 10 and gps_altitude > start_gps_altitude + 10) or (MODE == "groundtest" and len(timestamps) > 5):
@@ -393,6 +398,7 @@ def main()->None:
     start_ascend_timestamp = round(perf_counter() * 1000 - start_perf)
 
     while pi_state == "ascending":
+        fake_luminance_bool = False
         status_led.off()
         errors = []
         timestamp = round(perf_counter() * 1000 - start_perf)
@@ -472,23 +478,39 @@ def main()->None:
             luminance2 = 0
             luminance3 = 0
             light2n3 = initialize_light2n3()
-        
-        if luminance1 is not None and luminance2 is not None and luminance3 is not None:
-            highest_luminance = max([luminance1, luminance3, luminance2])
-        else:
+
+        try:
+            if luminance1 is not None and luminance2 is not None and luminance3 is not None:
+                highest_luminance = max([luminance1, luminance3, luminance2])
+            else:
+                highest_luminance = 0
+        except Exception as error:
             highest_luminance = 0
+            fake_luminance_bool = True
+            
         
         try:
-            nmea_sentence = gps.serialPort.readline().decode().strip()
-            gps_lat_lon = gps.extract_lat_lon(nmea_sentence, "decimal")
-            gps_altitude = gps.extract_altitude(nmea_sentence)
-            gps_speed = gps.extract_velocity(nmea_sentence)
+            gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
+            gps_lat = Gt_u7.get_lat(gpsd)
+            gps_lon = Gt_u7.get_lon(gpsd)
+            gps_altitude = Gt_u7.get_altitude(gpsd)
         except Exception as error:
             gps = initialize_gt_u7()
+        
+        descending_speed_bool =  False
+        try:
+            gps_negative_speed_bool = gps_speed < -2
+            avg_bme_vertical_speed_bool = avg_bme_vertical_speed < -2
+            vertical_acceleration_bool = vertical_acceleration < 0
 
-        #TODO: add max time and also gps height
-        if (gps_speed and avg_bme_vertical_speed < -2 and vertical_acceleration < 0 and highest_luminance > 20) or timestamp - start_ascend_timestamp > 10000 or (MODE == "groundtest" and len(timestamps) > 10):
-            #TODO check for lighsensors
+            #if at least 2 of the 3 conditions are true, the canSat is descending
+            if (gps_negative_speed_bool + avg_bme_vertical_speed_bool + vertical_acceleration_bool) >= 2:
+                descending_speed_bool = True
+        except Exception as error:
+            gps_negative_speed_bool = False
+        
+        #if it has taken more than 3 sec and at least 2 hight/speed sensrs indicate a fall and the light sensors indicate a certain luminance or are broken, or it has taken over 10 sec the canSat is descending
+        if (timestamp - start_ascend_timestamp > 3000 and descending_speed_bool and (highest_luminance > 20 or fake_luminance_bool)) or timestamp - start_ascend_timestamp > 10000 or (MODE == "groundtest" and len(timestamps) > 10):
             pi_state = "descending"  
         try:
             guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{temperature}")
@@ -497,7 +519,7 @@ def main()->None:
             guenther = initialize_guenther()
 
         with open(logfile_path, "a") as logfile:
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,{gps_lat_lon},{';'.join(errors)},{pi_state}\n")
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,{gps_lat},{gps_lon},{';'.join(errors)},{pi_state}\n")
         
         status_led.on()
         sleep(1)
@@ -589,14 +611,14 @@ def main()->None:
             mpu6050 = initialize_mpu6050()
 
         try:
-            nmea_sentence = gps.serialPort.readline().decode().strip()
-            gps_altitude = gps.extract_altitude(nmea_sentence)
-            gps_lat_lon = gps.extract_lat_lon(nmea_sentence, "decimal")
+            gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
+            gps_lat = Gt_u7.get_lat(gpsd)
+            gps_lon = Gt_u7.get_lon(gpsd)
+            gps_altitude = Gt_u7.get_altitude(gpsd)
         except Exception as error:
-            #TODO report error to groundstation or in logs?
             gps = initialize_gt_u7()
-        #gps mehr gewichten
-        if (MODE != "groundtest" and bme_altitude < start_bme_altitude + 5 and gps_altitude < start_gps_altitude + 5) or timestamp - start_descending_timestamp > 30000 or (MODE == "groundtest" and len(timestamps) > 15):
+
+        if (timestamp - start_descending_timestamp > 60000) or (MODE == "groundtest" and len(timestamps) > 15):
                     pi_state = "landed"
                 
         try:
@@ -606,7 +628,7 @@ def main()->None:
             guenther = initialize_guenther()
         
         with open(logfile_path, "a") as logfile:
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,{gps_lat_lon},{';'.join(errors)},{pi_state}\n")
+            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,{gps_lat},{gps_lon},{';'.join(errors)},{pi_state}\n")
         
         status_led.on()
         sleep(1)
