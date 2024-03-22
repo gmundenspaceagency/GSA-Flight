@@ -333,8 +333,8 @@ def main()->None:
         start_bme_altitude = fake_start_altitude
     
     try:
-        nmea_sentence = gps.serialPort.readline().decode().strip()
-        start_gps_altitude = gps.extract_altitude(nmea_sentence)
+        gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
+        start_gps_altitude = gps.get_altitude(gpsd)
     except Exception as error:
         try:
             #TODO: error code statt ganzes teil senden + printen
@@ -361,12 +361,12 @@ def main()->None:
         bme_altitudes.append(bme_altitude)
         temperature = round(float(bme280.temperature), 2)
         humidity = round(float(bme280.humidity) / 100, 2)
-        
+
         try:
             gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-            gps_lat = Gt_u7.get_lat(gpsd)
-            gps_lon = Gt_u7.get_lon(gpsd)
-            gps_altitude = Gt_u7.get_altitude(gpsd)
+            gps_lat = gps.get_lat(gpsd)
+            gps_lon = gps.get_lon(gpsd)
+            gps_altitude = gps.get_altitude(gpsd)
         except Exception as error:
             gps = initialize_gt_u7()
 
@@ -491,9 +491,9 @@ def main()->None:
         
         try:
             gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-            gps_lat = Gt_u7.get_lat(gpsd)
-            gps_lon = Gt_u7.get_lon(gpsd)
-            gps_altitude = Gt_u7.get_altitude(gpsd)
+            gps_lat = gps.get_lat(gpsd)
+            gps_lon = gps.get_lon(gpsd)
+            gps_altitude = gps.get_altitude(gpsd)
         except Exception as error:
             gps = initialize_gt_u7()
         
@@ -612,9 +612,9 @@ def main()->None:
 
         try:
             gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-            gps_lat = Gt_u7.get_lat(gpsd)
-            gps_lon = Gt_u7.get_lon(gpsd)
-            gps_altitude = Gt_u7.get_altitude(gpsd)
+            gps_lat = gps.get_lat(gpsd)
+            gps_lon = gps.get_lon(gpsd)
+            gps_altitude = gps.get_altitude(gpsd)
         except Exception as error:
             gps = initialize_gt_u7()
 
