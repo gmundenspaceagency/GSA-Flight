@@ -318,8 +318,6 @@ def main()->None:
                 print("Error in camera recording: " + str(error))
     try:
         bme280.update_sensor()
-        sleep(1)
-        bme280.update_sensor()
         pressure = round(float(bme280.pressure), 2)
         start_bme_altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
     except Exception as error:
@@ -395,7 +393,6 @@ def main()->None:
     start_ascend_timestamp = round(perf_counter() * 1000 - start_perf)
 
     while pi_state == "ascending":
-        fake_luminance_bool = False
         status_led.off()
         errors = []
         timestamp = round(perf_counter() * 1000 - start_perf)
@@ -475,16 +472,11 @@ def main()->None:
             luminance2 = 0
             luminance3 = 0
             light2n3 = initialize_light2n3()
-
-        try:
-            if luminance1 is not None and luminance2 is not None and luminance3 is not None:
-                highest_luminance = max([luminance1, luminance3, luminance2])
-            else:
-                highest_luminance = 0
-        except Exception as error:
+        
+        if luminance1 is not None and luminance2 is not None and luminance3 is not None:
+            highest_luminance = max([luminance1, luminance3, luminance2])
+        else:
             highest_luminance = 0
-            fake_luminance_bool = True
-            
         
         try:
             nmea_sentence = gps.serialPort.readline().decode().strip()
@@ -493,21 +485,10 @@ def main()->None:
             gps_speed = gps.extract_velocity(nmea_sentence)
         except Exception as error:
             gps = initialize_gt_u7()
-        
-        descending_speed_bool =  False
-        try:
-            gps_negative_speed_bool = gps_speed < -2
-            avg_bme_vertical_speed_bool = avg_bme_vertical_speed < -2
-            vertical_acceleration_bool = vertical_acceleration < 0
 
-            #if at least 2 of the 3 conditions are true, the canSat is descending
-            if (gps_negative_speed_bool + avg_bme_vertical_speed_bool + vertical_acceleration_bool) >= 2:
-                descending_speed_bool = True
-        except Exception as error:
-            gps_negative_speed_bool = False
-        
-        #if it has taken more than 3 sec and at least 2 hight/speed sensrs indicate a fall and the light sensors indicate a certain luminance or are broken, or it has taken over 10 sec the canSat is descending
-        if (timestamp - start_ascend_timestamp > 3000 and descending_speed_bool and (highest_luminance > 20 or fake_luminance_bool)) or timestamp - start_ascend_timestamp > 10000 or (MODE == "groundtest" and len(timestamps) > 10):
+        #TODO: add max time and also gps height
+        if (gps_speed and avg_bme_vertical_speed < -2 and vertical_acceleration < 0 and highest_luminance > 20) or timestamp - start_ascend_timestamp > 10000 or (MODE == "groundtest" and len(timestamps) > 10):
+            #TODO check for lighsensors
             pi_state = "descending"  
         try:
             guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{temperature}")
@@ -614,7 +595,8 @@ def main()->None:
         except Exception as error:
             #TODO report error to groundstation or in logs?
             gps = initialize_gt_u7()
-        if (timestamp - start_descending_timestamp > 60000) or (MODE == "groundtest" and len(timestamps) > 15):
+        #gps mehr gewichten
+        if (MODE != "groundtest" and bme_altitude < start_bme_altitude + 5 and gps_altitude < start_gps_altitude + 5) or timestamp - start_descending_timestamp > 30000 or (MODE == "groundtest" and len(timestamps) > 15):
                     pi_state = "landed"
                 
         try:
