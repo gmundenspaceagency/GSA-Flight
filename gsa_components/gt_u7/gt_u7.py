@@ -14,6 +14,12 @@ class Gt_u7:
         if nx['class'] == 'TPV':
             longitude = getattr(nx,'lon', "Unknown")
             return str(longitude)
+        
+    def get_altitude(self, gpsd):
+        nx = gpsd.next()
+        if nx['class'] == 'TPV':
+            altitude = getattr(nx,'alt', "Unknown")
+            return str(altitude)
 
 if __name__ == "__main__":
     gt_u7 = Gt_u7()
@@ -21,4 +27,5 @@ if __name__ == "__main__":
     while True:
         print(gt_u7.get_lat(gpsd))
         print(gt_u7.get_lon(gpsd))
+        print(gt_u7.get_altitude(gpsd))
         time.sleep(1)
