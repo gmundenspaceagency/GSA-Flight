@@ -1,26 +1,19 @@
-import serial
-import pynmea2
 from gps import *
 import time
 
 class Gt_u7:
-    def __init__(self, port='/dev/ttyACM0', baud=9600):
-        self.serialPort = serial.Serial(port, baudrate=baud, timeout=1)
-        
-    def getPositionData(gpsd):
+
+    def get_lat(gpsd):
         nx = gpsd.next()
         if nx['class'] == 'TPV':
             latitude = getattr(nx,'lat', "Unknown")
+            return str(latitude)
+
+    def get_lon(gpsd):
+        nx = gpsd.next()
+        if nx['class'] == 'TPV':
             longitude = getattr(nx,'lon', "Unknown")
-            print ("Your position: lon = " + str(longitude) + ", lat = " + str(latitude))
-
-    gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-
-    while True:
-        getPositionData(gpsd)
-        time.sleep(1.0)
-
-
+            return str(longitude)
     
     
     def extract_lat(self):
@@ -103,6 +96,9 @@ class Gt_u7:
 
 if __name__ == "__main__":
     gt_u7 = Gt_u7()
+
     while True:
-        nmea_sentence = gt_u7.serialPort.readline().decode().strip()
-        print(gt_u7.extract_lat(nmea_sentence))
+        gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
+        print("lat:", gt_u7.get_lat(gpsd))
+        print("lon", gt_u7.get_lon(gpsd))
+        time.sleep(1.0)
