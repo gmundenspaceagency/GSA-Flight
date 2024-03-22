@@ -7,14 +7,14 @@ class Gt_u7:
     def __init__(self, port='/dev/ttyACM0', baud=9600):
         self.serialPort = serial.Serial(port, baudrate=baud, timeout=1)
         
-    def getPositionData(gps):
+    def getPositionData(gpsd):
         nx = gpsd.next()
         if nx['class'] == 'TPV':
             latitude = getattr(nx,'lat', "Unknown")
             longitude = getattr(nx,'lon', "Unknown")
             print ("Your position: lon = " + str(longitude) + ", lat = " + str(latitude))
 
-    gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
+        gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
 
     while True:
         getPositionData(gpsd)
