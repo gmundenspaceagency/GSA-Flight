@@ -1,4 +1,5 @@
 import os
+import csv
 import time
 import smbus
 import datetime
@@ -347,9 +348,10 @@ def main()->None:
     logfile_path = log_dir + "datalog.csv"
 
     with open(logfile_path, "a") as logfile:
-        logfile.write(f"Teamname: Gmunden Space Agency, CanSat Flight Logfile at: {start_time}\n")
-        logfile.write("\n")
-        logfile.write("Timestamp,Pressure (hPa),Temperature (°C),Humidity (%),Altitudes (m),Speed (m/s),Relative Vertical Acceleration (m/s^2),Absolute Acceleration X (g),Absolute Acceleration Y (g),Absolute Acceleration Z (g),Rate of Rotation X (°/s),Rate of Rotation Y (°/s),Rate of Rotation Z (°/s),Motor Rotation (°),Luminance at 0° (lux),Luminance at 120° (lux),Luminance at 240° (lux),Calculated Light Angle (°),Solar Panel Voltage (V),Gps Lat and Lon (°),Errors,Status\n")
+        csv_writer = csv.writer(logfile, delimiter = ";")
+        csv_writer.writerow(["Teamname: Gmunden Space Agency, CanSat Flight Logfile at: "+ start_time])
+        csv_writer.writerow([])
+        csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Altitudes (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (g)","Absolute Acceleration Y (g)", "Absolute Acceleration Z (g)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Errors", "Status"])
 
     while pi_state == "ground_level":
         status_led.off()
@@ -377,8 +379,33 @@ def main()->None:
             start_bme_altitude = bme_altitude
 
         with open(logfile_path, "a") as logfile:
-            #TODO: gps daten loggen
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},,,,,,,,,,,,,,,{gps_lat},{gps_lon},None,{pi_state}\n")
+            csv_writer = csv.writer(logfile, delimiter=";")
+            data = [
+                timestamp,
+                str(pressure).replace(".",","),
+                str(temperature).replace(".",","),
+                str(humidity).replace(".",","),
+                str(bme_altitude).replace(".",","),
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                str(gps_lat).replace(".",","),
+                str(gps_lon).replace(".",","),
+                ';'.join(errors),
+                pi_state
+            ]
+            csv_writer.writerow(data)
 
         #TODO: wenn gps geht dann Gps beforzugen
         if (bme_altitude > start_bme_altitude + 10 and gps_altitude > start_gps_altitude + 10) or (MODE == "groundtest" and len(timestamps) > 5):
@@ -519,8 +546,36 @@ def main()->None:
             guenther = initialize_guenther()
 
         with open(logfile_path, "a") as logfile:
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,{gps_lat},{gps_lon},{';'.join(errors)},{pi_state}\n")
-        
+            csv_writer = csv.writer(logfile, delimiter=';')
+            data = [
+                timestamp,
+                str(pressure).replace(".",","),
+                str(temperature).replace(".",","),
+                str(humidity).replace(".",","),
+                str(bme_altitude).replace(".",","),
+                str(vertical_speed).replace(".",","),
+                str(vertical_acceleration).replace(".",","),
+                str(acceleration_x).replace(".",","),
+                str(acceleration_y).replace(".",","),
+                str(acceleration_z).replace(".",","),
+                str(rotationrate_x).replace(".",","),
+                str(rotationrate_y).replace(".",","),
+                str(rotationrate_z).replace(".",","),
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                str(gps_lat).replace(".",","),
+                str(gps_lon).replace(".",","),
+                ';'.join(errors),
+                pi_state
+            ]
+
+            csv_writer.writerow(data)
+            #logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,,,,,,{gps_lat_lon},{';'.join(errors)},{pi_state}\n")
+
         status_led.on()
         sleep(1)
 
@@ -628,7 +683,36 @@ def main()->None:
             guenther = initialize_guenther()
         
         with open(logfile_path, "a") as logfile:
-            logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,{gps_lat},{gps_lon},{';'.join(errors)},{pi_state}\n")
+            csv_writer = csv.writer(logfile, delimiter=';')
+            data = [
+                timestamp,
+                str(pressure).replace(".",","),
+                str(temperature).replace(".",","),
+                str(humidity).replace(".",","),
+                str(bme_altitude).replace(".",","),
+                str(vertical_speed).replace(",","."),
+                str(vertical_acceleration).replace(".",","),
+                str(acceleration_x).replace(".",","),
+                str(acceleration_y).replace(".",","),
+                str(acceleration_z).replace(".",","),
+                str(rotationrate_x).replace(".",","),
+                str(rotationrate_y).replace(".",","),
+                str(rotationrate_z).replace(".",","),
+                "",
+                str(luminance1).replace(".",","),
+                str(luminance2).replace(".",","),
+                str(luminance3).replace(".",","),
+                "",
+                "",
+                str(gps_lat).replace(".",","),
+                str(gps_lon).replace(".",","),
+                ';'.join(errors),
+                pi_state
+            ]
+
+            csv_writer.writerow(data)
+            
+            #logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},{vertical_speed},{vertical_acceleration},{acceleration_x},{acceleration_y},{acceleration_z},{rotationrate_x},{rotationrate_y},{rotationrate_z},,{luminance1},{luminance2},{luminance3},,,{gps_lat},{gps_lon},{';'.join(errors)},{pi_state}\n")
         
         status_led.on()
         sleep(1)
@@ -650,7 +734,35 @@ def main()->None:
 
         #TODO: add a landed mode with coordinates
         with open(logfile_path, "a") as logfile:
-            logfile.write(f"{timestamp},,,,,,,,,,,,,,,,,,{gps_lat_lon},None,{pi_state}\n")
+            csv_writer = csv.writer(logfile, delimiter=';')
+            data = [
+                timestamp,
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                str(gps_lat).replace(".",","),
+                str(gps_lon).replace(".",","),
+                "",
+                pi_state
+            ]
+
+            csv_writer.writerow(data)
+            #logfile.write(f"{timestamp},,,,,,,,,,,,,,,,,,{gps_lat},{gps_lon},None,{pi_state}\n")
 
         try:
             guenther.send(f"(Info) Back on the ground again")
