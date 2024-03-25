@@ -405,7 +405,9 @@ def main()->None:
                 ';'.join(errors),
                 pi_state
             ]
+            
             csv_writer.writerow(data)
+            #logfile.write(f"{timestamp},{pressure},{temperature},{humidity},{bme_altitude},,,,,,,,,,,,,,,{gps_lat_lon},None,{pi_state}\n")
 
         #TODO: wenn gps geht dann Gps beforzugen
         if (bme_altitude > start_bme_altitude + 10 and gps_altitude > start_gps_altitude + 10) or (MODE == "groundtest" and len(timestamps) > 5):
