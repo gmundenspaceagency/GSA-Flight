@@ -26,13 +26,6 @@ from tests import CircularPIDController
 """
 Allgemeine ToDos:
 - GPS Daten lesen, an die Bodenstation senden ob wir FIX haben oder nicht
-    - GPS Höhendaten mit dem bme280280 Daten abgleichen
-- Temperaturdaten von GYRO und bme280280 abgleichen
-- Error handling
-    - Wenn ein Error zum ersten Mal auftritt: speichern wann er aufgetreten ist, den Fehlertext (str(error)), und wenn er wieder weggeht speicher wann er weggegangen ist
-    - Trotzdem noch alle Fehler printen
-    - In einer JSON Datei allen unseren Fehlern error codes zuordnen (eg. 01 -> Fehler mit Lichtsensor1, 08 -> Fehler mit bme280280)
-        - In einem Array aktuell aktive Fehler speichern und dieses Array wenn möglich zur Bodenstation schicken
 - Bodenstation und Transceiver
     - Empfangene Daten in einem bodenstation-log.csv speichern
     - Kleine UI mit empfangenen Daten, mögliche Fehler Codes darstellen
@@ -43,6 +36,13 @@ Allgemeine ToDos:
 
 CANSAT_ID = "69xd"
 MODE = "groundtest" # either "groundtest" or "flight"
+
+# values for groundtest in seconds:
+ground_duration = 15
+ascending_duration = 15
+descending_duration = 15
+
+deactivate_beeping = True
 pi_state = "initializing"
 current_errors = []
 print("Pi is initializing...")
@@ -138,7 +138,7 @@ def initialize_mpu6050()->Optional[Mpu6050]:
 
 def initialize_motor()->Optional[StepperMotor]:
     try:
-        motor = StepperMotor(26, 19, 200, 0.002)
+        motor = StepperMotor(24, 23)
         # sleep(0.5)
         # motor.set_angle(270)
         # sleep(0.5)
@@ -195,7 +195,7 @@ try:
     power_button = 10
     GPIO.setup(power_button, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-    beeper = LED(21)
+    beeper = LED(20 if deactivate_beeping else 21)
     beeper.on()
     sleep(0.5)
     beeper.off()
@@ -292,6 +292,7 @@ def rotation_mechanism() -> None:
                 pidController = CircularPIDController(0.3,0,0,360)
                 calculatedAngle = pidController.calculate(goal_angle, motor.current_angle)
                 motor.move_angle(calculatedAngle)
+                print(calculatedAngle, goal_angle)
             
             try:
                 ads1115_value = ads1115.read_adc(0, gain=1)
@@ -305,9 +306,12 @@ def rotation_mechanism() -> None:
 
             if "9" not in current_errors:
                 current_errors.append("9")
+            
+            # dont overload cpu
+            sleep(0.1)
 
 def main()->None:
-    global pi_state, ads1115, bme280, mpu6050, guenther, camera, multiplexer, gps
+    global pi_state, ads1115, bme280, mpu6050, guenther, camera, multiplexer, gps, luminance1, luminance2, luminance3, solar_voltage
 
     start_time = datetime.datetime.now()
     start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -438,11 +442,11 @@ def main()->None:
                 mpu6050 = initialize_mpu6050()
         
         # use "or" for ascending checks, because we cant rely on all data being correct (better false start than no start)
-        if (bme_ascending_check or gps_ascending_check or gyro_ascending_check) or (MODE == "groundtest" and len(timestamps) > 5):
+        if (bme_ascending_check or gps_ascending_check or gyro_ascending_check) or (MODE == "groundtest" and len(timestamps) > ground_duration):
             pi_state = "ascending"
         
         try:
-            guenther.send(f"(Info) Chilling on ground level")
+            guenther.send(f"(Info) Chilling on ground level at {bme_altitude}m (BME280) and {gps_altitude}m (GPS)")
         except Exception as error:
             # try to contact transceiver again
             guenther = initialize_guenther()
@@ -475,7 +479,7 @@ def main()->None:
             # X means they were not set yet
             pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = gps_lat = gps_lon = "X"
             acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = "X"
-            avg_bme_vertical_speed = gps_altitude = None
+            avg_bme_vertical_speed = gps_altitude = gps_speed = None
 
             try:
                 bme280.update_sensor()
@@ -484,7 +488,7 @@ def main()->None:
                 humidity = round(float(bme280.humidity) / 100, 2)
                 bme_altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
                 bme_altitudes.append(bme_altitude)
-                print(f"Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%")
+                print(f"Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {round(humidity * 100, 2)}%")
 
                 # speed can only be calculated after 2 height measures
                 if len(timestamps) > 1:
@@ -522,7 +526,7 @@ def main()->None:
             try:
                 luminance1 = round(light1.luminance(Bh1750.ONCE_LOWRES), 4)
             except Exception as error:
-                luminance1 = 0
+                luminance1 = 0 # why set to zero?
                 light1 = initialize_light1()
 
             try:
@@ -541,7 +545,7 @@ def main()->None:
                     highest_luminance = max([luminance1, luminance3, luminance2])
                 else:
                     highest_luminance = 0
-            except Exception as error:
+            except Exception as error: # this block will never happen
                 highest_luminance = 0
                 fake_luminance_bool = True
                 
@@ -551,7 +555,6 @@ def main()->None:
                 gps_lon = gps.get_lon(gpsd)
                 gps_altitude = gps.get_altitude(gpsd)
                 gps_altitudes.append(gps_altitude)
-                gps_speed = None
 
                 if gps_altitude is not None:
                     # search last not None altitude
@@ -588,12 +591,13 @@ def main()->None:
                     and (highest_luminance > 1000 or fake_luminance_bool) # the light sensors are outside (> 1000 lux) or dont work
                     or timestamp - start_ascend_timestamp > 10000 # max asending time is 10s
                 ) 
-                or (MODE == "groundtest" and len(timestamps) > 10)
+                or (MODE == "groundtest" and len(timestamps) > ground_duration + ascending_duration)
             ):
                 pi_state = "descending"
               
             try:
-                guenther.send(f"{CANSAT_ID};{timestamp};{bme_altitude};{temperature};{"".join(current_errors)};C") # C for ascending
+                error_string = "".join(current_errors)
+                guenther.send(f"{CANSAT_ID};{timestamp};{bme_altitude};{temperature};{error_string};C") # C for ascending
             except Exception as error:
                 # try to contact transceiver again
                 guenther = initialize_guenther()
@@ -629,10 +633,11 @@ def main()->None:
                 csv_writer.writerow(data)
 
             status_led.on()
-            sleep(1)
         except Exception as error:
             print("Error in ascending loop: " + str(error))
             current_errors.append("A")
+
+        sleep(1)
 
     rotation_thread = Thread(target=rotation_mechanism, args=())
     rotation_thread.start()
@@ -659,7 +664,7 @@ def main()->None:
                     current_errors.append("F")
 
             # X means they were not set yet
-            pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = luminance1 = luminance2 = luminance3 = "X"
+            pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = "X"
             acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = gps_lat = gps_lon = "X"
 
             print(f"Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}")
@@ -673,7 +678,7 @@ def main()->None:
                 bme_altitude = round(44330.0 * (1.0 - pow(pressure / 1013.25, (1.0 / 5.255))), 2)
                 bme_altitudes.append(bme_altitude)
 
-                print(f"Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {humidity * 100}%")
+                print(f"Pressure: {pressure}hPa, temperature: {temperature}°C, humidity: {round(humidity * 100, 2)}%")
 
                 # speed can only be calculated after 2 height measures
                 if len(timestamps) > 1:
@@ -723,12 +728,13 @@ def main()->None:
 
             if (
                 timestamp - start_descending_timestamp > 60000 # always descend for 1 minute
-                or (MODE == "groundtest" and len(timestamps) > 15)
+                or (MODE == "groundtest" and len(timestamps) > ground_duration + ascending_duration + descending_duration)
             ):
                 pi_state = "landed"
                     
             try:
-                guenther.send(f"{CANSAT_ID};{timestamp};{bme_altitude};{temperature};{"".join(current_errors)};D") # D for descending
+                error_string = "".join(current_errors)
+                guenther.send(f"{CANSAT_ID};{timestamp};{bme_altitude};{temperature};{error_string};D") # D for descending
             except Exception as error:
                 # try to contact transceiver again
                 guenther = initialize_guenther()
@@ -750,24 +756,25 @@ def main()->None:
                     format_num(rotationrate_y),
                     format_num(rotationrate_z),
                     "",
-                    format_num(luminance1),
-                    format_num(luminance2),
-                    format_num(luminance3),
+                    format_num(luminance1 if luminance1 is not None else "X"),
+                    format_num(luminance2 if luminance2 is not None else "X"),
+                    format_num(luminance3 if luminance3 is not None else "X"),
                     "",
                     "",
                     format_num(gps_lat),
                     format_num(gps_lon),
-                    ','.join(current_errors),
+                    ",".join(current_errors),
                     pi_state
                 ]
 
                 csv_writer.writerow(data)
                                
             status_led.on()
-            sleep(1)
         except Exception as error:
             print("Error in descending loop: " + str(error))
             current_errors.append("A")
+
+        sleep(1)
 
     print("CanSat has reached ground level")
 
