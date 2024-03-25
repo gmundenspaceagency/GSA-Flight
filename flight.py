@@ -293,7 +293,6 @@ def rotation_mechanism() -> None:
 def main()->None:
     global pi_state, ads1115, bme280, mpu6050, guenther, camera, multiplexer, gps
 
-
     start_time = datetime.datetime.now()
     start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
     start_perf = round(perf_counter() * 1000)
