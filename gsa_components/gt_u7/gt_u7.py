@@ -1,17 +1,17 @@
 import time
-from gps import *
+from gps import gps, WATCH_ENABLE
 
 class Gt_u7:
     def __init__(self):
-        self.gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
+        self.session = gps(mode=WATCH_ENABLE)
 
     def get_data(self):
-        nx = self.gpsd.next()
-        if nx['class'] == 'TPV':
-            latitude = nx.get('lat', "Unknown")
-            longitude = nx.get('lon', "Unknown")
-            altitude = nx.get('alt', "Unknown")
-            return str(latitude), str(longitude), str(altitude)
+        for report in self.session:
+            if report['class'] == 'TPV':
+                latitude = getattr(report, 'lat', "Unknown")
+                longitude = getattr(report, 'lon', "Unknown")
+                altitude = getattr(report, 'alt', "Unknown")
+                return str(latitude), str(longitude), str(altitude)
 
 if __name__ == "__main__":
     gt_u7 = Gt_u7()
