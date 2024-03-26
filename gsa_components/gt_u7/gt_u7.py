@@ -36,13 +36,6 @@ if __name__ == "__main__":
         latitude, longitude = gps.get_coordinates()
         altitude = gps.get_altitude()
 
-        if latitude is not None and longitude is not None:
-            print("Latitude:", latitude)
-            print("Longitude:", longitude)
-        else:
-            print("Keine GPS-Daten verfügbar.")
-
-        if altitude is not None:
-            print("Höhe:", altitude)
-        else:
-            print("Keine Höhendaten verfügbar.")
+        print(f"lon:{latitude}")
+        print(f"lon:{longitude}")
+        print(f"lon:{altitude}")
