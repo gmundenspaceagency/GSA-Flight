@@ -13,7 +13,8 @@ class Gt_u7:
                 msg = pynmea2.parse(data)
                 return msg
 
-    def get_coordinates(self, msg):
+    def get_coordinates(self):
+        msg = gps.read_data()
         if msg:
             latitude = msg.latitude
             longitude = msg.longitude
@@ -21,20 +22,20 @@ class Gt_u7:
         else:
             return None, None
 
-    def get_altitude(self, msg):
-            if msg:
-                altitude = msg.altitude
-                return altitude
-            else:
-                return None
+    def get_altitude(self):
+        msg = gps.read_data()
+        if msg:
+            altitude = msg.altitude
+            return altitude
+        else:
+            return None
 
 if __name__ == "__main__":
     gps = Gt_u7()
 
     while True:
-        msg = gps.read_data()
-        latitude, longitude = gps.get_coordinates(msg)
-        altitude = gps.get_altitude(msg)
+        latitude, longitude = gps.get_coordinates()
+        altitude = gps.get_altitude()
 
         print(f"lon:{longitude}")
         print(f"lat:{latitude}")
