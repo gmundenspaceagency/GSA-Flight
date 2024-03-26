@@ -1,23 +1,25 @@
+## I got this code from https://maker.pro/raspberry-pi/tutorial/how-to-read-gps-data-with-python-on-a-raspberry-pi
+
+from gps import *
 import time
-from gps import gps, WATCH_ENABLE
 
-class Gt_u7:
-    def __init__(self):
-        self.session = gps(mode=WATCH_ENABLE)
+running = True
 
-    def get_data(self):
-        for report in self.session:
-            if report['class'] == 'TPV':
-                latitude = getattr(report, 'lat', "Unknown")
-                longitude = getattr(report, 'lon', "Unknown")
-                altitude = getattr(report, 'alt', "Unknown")
-                return str(latitude), str(longitude), str(altitude)
+def getPositionData(gps):
+    nx = gpsd.next()
+    if nx['class'] == 'TPV':
+        latitude = getattr(nx,'lat', "Unknown")
+        longitude = getattr(nx,'lon', "Unknown")
+        print ("Your position: lon = " + str(longitude) + ", lat = " + str(latitude))
 
-if __name__ == "__main__":
-    gt_u7 = Gt_u7()
-    while True:
-        lat, lon, alt = gt_u7.get_data()
-        print(lat)
-        print(lon)
-        print(alt)
-        time.sleep(1)
+gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
+
+try:
+    print ("Application started!")
+    while running:
+        getPositionData(gpsd)
+        time.sleep(1.0)
+
+except (KeyboardInterrupt):
+    running = False
+    print ("Applications closed!")
