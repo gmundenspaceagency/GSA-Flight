@@ -469,7 +469,6 @@ def main()->None:
 
     while pi_state == "ascending":
         try:
-            fake_luminance_bool = False
             status_led.off()
             current_errors.clear()
             timestamp = round(perf_counter() * 1000 - start_perf)
@@ -532,10 +531,12 @@ def main()->None:
                 # try to contact sensor again
                 mpu6050 = initialize_mpu6050()
             
+            luminance1 = luminance2 = luminance3 = 0
+
             try:
                 luminance1 = round(light1.luminance(Bh1750.ONCE_LOWRES), 4)
             except Exception as error:
-                luminance1 = 0 # why set to zero?
+                # try to contact sensor again
                 light1 = initialize_light1()
 
             try:
@@ -545,18 +546,10 @@ def main()->None:
                 luminance3 = round(light2n3.luminance(Bh1750.ONCE_LOWRES), 4)
             except Exception as error:
                 # try to contact sensor again
-                luminance2 = 0
-                luminance3 = 0
                 light2n3 = initialize_light2n3()
 
-            try:
-                if luminance1 is not None and luminance2 is not None and luminance3 is not None:
-                    highest_luminance = max([luminance1, luminance3, luminance2])
-                else:
-                    highest_luminance = 0
-            except Exception as error: # this block will never happen
-                highest_luminance = 0
-                fake_luminance_bool = True
+            highest_luminance = max([luminance1, luminance2, luminance3])
+            all_light_sensors_broken = highest_luminance == 0
                 
             try:
                 gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
@@ -589,7 +582,7 @@ def main()->None:
             working_sensors_count = bme_works + gps_works + gyro_works
             descending_indicators_count = gps_negative_speed_bool + avg_bme_vertical_speed_bool + vertical_acceleration_bool
             
-            # if at least half of the working sensors indicate a descent, the CanSat is descending
+            # if at least half of the working sensors indicate a descent, descending mode is activated
             if descending_indicators_count >= working_sensors_count - 1:
                 descending_speed_bool = True
 
@@ -597,8 +590,8 @@ def main()->None:
                 (
                     timestamp - start_ascend_timestamp > 3000 # ascend must be longer than 3s
                     and descending_speed_bool # half of working sensors indicate a descent
-                    and (highest_luminance > 1000 or fake_luminance_bool) # the light sensors are outside (> 1000 lux) or dont work
-                    or (timestamp - start_ascend_timestamp > 10000 and MODE != "modetest") # max ascending time is 10s
+                    and (highest_luminance > 1000 or all_light_sensors_broken) # the light sensors are outside (> 1000 lux) or dont work
+                    or (timestamp - start_ascend_timestamp > 7000 and MODE != "modetest") # max ascending time is 7s
                 ) 
                 or (MODE == "groundtest" and len(timestamps) > ground_duration + ascending_duration)
             ):
