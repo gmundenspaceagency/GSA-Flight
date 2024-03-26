@@ -1,17 +1,12 @@
-import gps
+import serial
+import pynmea2
 
-session = gps.gps("localhost", "2947")
-session.stream(gps.WATCH_ENABLE | gps.WATCH_NEWSTYLE)
+# Serielle Verbindung herstellen
+ser = serial.Serial('/dev/ttyACM0', 9600)  # Überprüfe die Baudrate entsprechend deiner Anwendung
 
-while True:
-    try:
-        report = session.next()
-        if report['class'] == 'TPV':
-            print(report)
-    except KeyError:
-        pass
-    except KeyboardInterrupt:
-        quit()
-    except StopIteration:
-        session = None
-        print("GPSD has terminated")
+    while True:
+        # Daten vom Port lesen
+        data = ser.readline().decode().strip()  # Daten decodieren und unnötige Leerzeichen entfernen
+        
+        # Daten ausgeben
+        print("Empfangene Daten:", data)
