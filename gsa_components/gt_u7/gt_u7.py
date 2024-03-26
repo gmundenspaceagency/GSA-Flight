@@ -13,13 +13,19 @@ class Gt_u7:
             return msg
 
     def get_coordinates(self, msg):
-        latitude = msg.latitude
-        longitude = msg.longitude
-        return latitude, longitude
+        if msg:
+            latitude = msg.latitude
+            longitude = msg.longitude
+            return latitude, longitude
+        else:
+            return None, None
 
     def get_altitude(self, msg):
-            altitude = msg.altitude
-            return altitude
+            if msg:
+                altitude = msg.altitude
+                return altitude
+            else:
+                return None
 
 if __name__ == "__main__":
     gps = Gt_u7()
