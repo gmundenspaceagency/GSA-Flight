@@ -35,14 +35,14 @@ Allgemeine ToDos:
 """
 
 CANSAT_ID = "69xd"
-MODE = "groundtest" # either "groundtest" or "flight"
+MODE = "groundtest" # either "groundtest", "modetest" or "flight"
 
 # values for groundtest in seconds:
-ground_duration = 15
-ascending_duration = 15
-descending_duration = 15
+ground_duration = 5
+ascending_duration = 5
+descending_duration = 5
 
-deactivate_beeping = True
+deactivate_beeping = False
 pi_state = "initializing"
 current_errors = []
 print("Pi is initializing...")
@@ -311,7 +311,7 @@ def rotation_mechanism() -> None:
             sleep(0.1)
 
 def main()->None:
-    global pi_state, ads1115, bme280, mpu6050, guenther, camera, multiplexer, gps, luminance1, luminance2, luminance3, solar_voltage
+    global pi_state, ads1115, bme280, mpu6050, guenther, camera, multiplexer, gps, luminance1, luminance2, luminance3, solar_voltage, current_errors
 
     start_time = datetime.datetime.now()
     start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -361,14 +361,14 @@ def main()->None:
 
     with open(logfile_path, "a") as logfile:
         csv_writer = csv.writer(logfile, delimiter = ";")
-        csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Altitudes (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (g)","Absolute Acceleration Y (g)", "Absolute Acceleration Z (g)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Errors", "Status"])
+        csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Altitude (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (g)","Absolute Acceleration Y (g)", "Absolute Acceleration Z (g)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Gps Altitude (m)", "Errors", "Status"])
 
     while pi_state == "ground_level":
         status_led.off()
         current_errors = []
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
-        bme_altitude = gps_altitude = pressure = temperature = humidity = gps_lat = gps_lon = "X"
+        bme_altitude = gps_altitude = pressure = temperature = humidity = gps_lat = gps_lon = None
 
         try:
             bme280.update_sensor()
@@ -419,20 +419,20 @@ def main()->None:
                 "",
                 format_num(gps_lat),
                 format_num(gps_lon),
-                ','.join(current_errors),
+		format_num(gps_altitude),
+                ",".join(current_errors),
                 pi_state
             ]
             
             csv_writer.writerow(data)
 
-        #TODO: wenn gps geht dann Gps beforzugen
         bme_altitude_diff = 10
         gps_altitude_diff = 10
-        bme_ascending_check = bme_altitude > start_bme_altitude + bme_altitude_diff if bme_altitude != "X" else False
-        gps_ascending_check = gps_altitude > start_gps_altitude + gps_altitude_diff if gps_altitude != "X" else False
+        bme_ascending_check = bme_altitude > start_bme_altitude + bme_altitude_diff if bme_altitude is not None else False
+        gps_ascending_check = gps_altitude > start_gps_altitude + gps_altitude_diff if gps_altitude is not None else False
         gyro_ascending_check = False
 
-        if gps_altitude == "X" and bme_altitude == "X":
+        if gps_altitude is None and bme_altitude is None:
             try:
                 z_acceleration = mpu6050.get_scaled_acceleration()
                 if z_acceleration > 5:
@@ -476,9 +476,8 @@ def main()->None:
                     print(f"Warning: Single iteration in descent took more than {max_iteration_time}ms (took {time_difference}ms)")
                     current_errors.append("F")
                         
-            # X means they were not set yet
-            pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = gps_lat = gps_lon = "X"
-            acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = "X"
+            pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = gps_lat = gps_lon = None
+            acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = None
             avg_bme_vertical_speed = gps_altitude = gps_speed = None
 
             try:
@@ -571,11 +570,11 @@ def main()->None:
             gps_negative_speed_bool = gps_speed < -2 if gps_speed is not None else False
             avg_bme_vertical_speed_bool = avg_bme_vertical_speed < -2 if avg_bme_vertical_speed is not None else False
             # normally the z-acceleration is 1g but when the cansat is falling it should go below that
-            vertical_acceleration_bool = acceleration_z < 0.7 if acceleration_z != "X" else False
+            vertical_acceleration_bool = acceleration_z < 0.7 if acceleration_z is not None else False
 
-            bme_works = bme_altitude != "X"
+            bme_works = bme_altitude is not None
             gps_works = gps_altitude is not None
-            gyro_works = acceleration_z != "X"
+            gyro_works = acceleration_z is not None
 
             working_sensors_count = bme_works + gps_works + gyro_works
             descending_indicators_count = gps_negative_speed_bool + avg_bme_vertical_speed_bool + vertical_acceleration_bool
@@ -589,7 +588,7 @@ def main()->None:
                     timestamp - start_ascend_timestamp > 3000 # ascend must be longer than 3s
                     and descending_speed_bool # half of working sensors indicate a descent
                     and (highest_luminance > 1000 or fake_luminance_bool) # the light sensors are outside (> 1000 lux) or dont work
-                    or timestamp - start_ascend_timestamp > 10000 # max asending time is 10s
+                    or (timestamp - start_ascend_timestamp > 10000 and MODE != "modetest") # max ascending time is 10s
                 ) 
                 or (MODE == "groundtest" and len(timestamps) > ground_duration + ascending_duration)
             ):
@@ -597,7 +596,7 @@ def main()->None:
               
             try:
                 error_string = "".join(current_errors)
-                guenther.send(f"{CANSAT_ID};{timestamp};{bme_altitude};{temperature};{error_string};C") # C for ascending
+                guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{temperature};{error_string};C") # C for ascending
             except Exception as error:
                 # try to contact transceiver again
                 guenther = initialize_guenther()
@@ -626,6 +625,7 @@ def main()->None:
                     "",
                     format_num(gps_lat),
                     format_num(gps_lon),
+		    format_num(gps_altitude),
                     ','.join(current_errors),
                     pi_state
                 ]
@@ -663,9 +663,8 @@ def main()->None:
                     print(f"Warning: Single iteration took more than {max_iteration_time}ms (took {time_difference}ms)")
                     current_errors.append("F")
 
-            # X means they were not set yet
-            pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = "X"
-            acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = gps_lat = gps_lon = "X"
+            pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = None
+            acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = gps_lat = gps_lon = None
 
             print(f"Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}")
             print(f"Solar panel voltage: {solar_voltage}V")
@@ -734,7 +733,7 @@ def main()->None:
                     
             try:
                 error_string = "".join(current_errors)
-                guenther.send(f"{CANSAT_ID};{timestamp};{bme_altitude};{temperature};{error_string};D") # D for descending
+                guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{temperature};{error_string};D") # D for descending
             except Exception as error:
                 # try to contact transceiver again
                 guenther = initialize_guenther()
@@ -755,10 +754,10 @@ def main()->None:
                     format_num(rotationrate_x),
                     format_num(rotationrate_y),
                     format_num(rotationrate_z),
-                    "",
-                    format_num(luminance1 if luminance1 is not None else "X"),
-                    format_num(luminance2 if luminance2 is not None else "X"),
-                    format_num(luminance3 if luminance3 is not None else "X"),
+                    format_num(motor.current_angle),
+                    format_num(luminance1),
+                    format_num(luminance2),
+                    format_num(luminance3),
                     "",
                     "",
                     format_num(gps_lat),
@@ -867,7 +866,7 @@ def main()->None:
 
 try:
     pi_state = "ground_level"
-    print("Program is running")
+    print(f"Program is running in {MODE} mode")
 
     while blinking:
         pass
