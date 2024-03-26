@@ -58,11 +58,14 @@ try:
     def blink_status(seq: list[float], state: str) -> None:
         global blinking
         blinking = True
-
-        while pi_state == state:
-            for timeout in seq:
-                status_led.toggle()
-                sleep(timeout)
+        
+        try:
+            while pi_state == state:
+                for timeout in seq:
+                    status_led.toggle()
+                    sleep(timeout)
+        except Exception as error:
+            print("Error in blinking thread: " + str(error))
 
         blinking = False
 
@@ -93,6 +96,10 @@ def set_multiplexer_channel(channel:int)->None:
 
 def format_num(num:float)->str:
     return str(num).replace(".", ",")
+
+def cleanup()->None:
+    beeper.off()
+    status_led.off()
 
 def initialize_light2n3()->Optional[Bh1750]:
     set_multiplexer_channel(6)
@@ -213,7 +220,8 @@ try:
     gps = initialize_gt_u7()
 except KeyboardInterrupt:
     print("Initializing aborted by keyboard interrupt")
-    GPIO.cleanup()
+    pi_state = "off"
+    cleanup()
     exit()
 try:
     pi_state = "ready"
@@ -249,7 +257,8 @@ try:
                 Thread(target=blink_status, args=([0.5], "ready")).start()
 except KeyboardInterrupt:
     print("Program stopped in ready state by keyboard interrupt")
-    GPIO.cleanup()
+    pi_state = "off"
+    cleanup()
     exit()
 
 luminance1 = luminance2 = luminance3 = solar_voltage = goal_angle = None
@@ -890,7 +899,7 @@ finally:
     if motor is not None:
         motor.set_angle(0)
         
-    GPIO.cleanup()
+    cleanup()
     pi_state = "off"
     currentTime = datetime.datetime.now()
     currentTimeStr = currentTime.strftime("%H:%M:%S")
