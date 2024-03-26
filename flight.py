@@ -348,8 +348,6 @@ def main()->None:
 
     with open(logfile_path, "a") as logfile:
         csv_writer = csv.writer(logfile, delimiter = ";")
-        csv_writer.writerow(["Teamname: Gmunden Space Agency, CanSat Flight Logfile at: "+ start_time])
-        csv_writer.writerow([])
         csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Altitudes (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (g)","Absolute Acceleration Y (g)", "Absolute Acceleration Z (g)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Errors", "Status"])
 
     while pi_state == "ground_level":
