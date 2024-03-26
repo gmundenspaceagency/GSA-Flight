@@ -251,7 +251,7 @@ luminance1 = luminance2 = luminance3 = None
 
 def rotation_mechanism() -> None:
     global light1, light2n3, multiplexer, luminance1, luminance2, luminance3
-    
+    last_total_luminance = 80000
     while pi_state == "descending":            
         try:  
             try:
@@ -267,6 +267,18 @@ def rotation_mechanism() -> None:
             except Exception as error:
                 # try to contact sensor again
                 light2n3 = initialize_light2n3()
+
+            luminances = [luminance1, luminance2, luminance3]
+            valid_luminances = [lum for lum in luminances if lum is not None and lum >= 1000]
+            total_luminance = sum(valid_luminances)
+
+            if len(valid_luminances) == 2:
+                diff = last_total_luminance - total_luminance
+                for i in range(len(luminances)):
+                    if luminances[i] is None or luminances[i] < 1000:
+                        luminances[i] = diff
+                        break
+
             
             if luminance1 is not None and luminance2 is not None and luminance3 is not None:
                 luminances = [luminance1, luminance3, luminance2]
@@ -289,10 +301,11 @@ def rotation_mechanism() -> None:
                 motor.move_angle(calculatedAngle)
         except ValueError as error:
             print("Error in rotation mechanism: " + str(error))
+        
+        last_total_luminance = sum(luminances)
 
 def main()->None:
     global pi_state, ads1115, bme280, mpu6050, guenther, camera, multiplexer, gps
-
 
     start_time = datetime.datetime.now()
     start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -349,8 +362,6 @@ def main()->None:
 
     with open(logfile_path, "a") as logfile:
         csv_writer = csv.writer(logfile, delimiter = ";")
-        csv_writer.writerow(["Teamname: Gmunden Space Agency, CanSat Flight Logfile at: "+ start_time])
-        csv_writer.writerow([])
         csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Altitudes (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (g)","Absolute Acceleration Y (g)", "Absolute Acceleration Z (g)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Errors", "Status"])
 
     while pi_state == "ground_level":
@@ -539,7 +550,7 @@ def main()->None:
             gps_negative_speed_bool = False
         
         #if it has taken more than 3 sec and at least 2 hight/speed sensrs indicate a fall and the light sensors indicate a certain luminance or are broken, or it has taken over 10 sec the canSat is descending
-        if (timestamp - start_ascend_timestamp > 3000 and descending_speed_bool and (highest_luminance > 20 or fake_luminance_bool)) or timestamp - start_ascend_timestamp > 10000 or (MODE == "groundtest" and len(timestamps) > 10):
+        if (timestamp - start_ascend_timestamp > 3000 and descending_speed_bool and (highest_luminance > 600 or fake_luminance_bool)) or timestamp - start_ascend_timestamp > 10000 or (MODE == "groundtest" and len(timestamps) > 10):
             pi_state = "descending"  
         try:
             guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{temperature}")
