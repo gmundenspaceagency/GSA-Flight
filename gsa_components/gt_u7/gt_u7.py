@@ -1,5 +1,4 @@
 import time
-import json
 from gps import *
 
 class Gt_u7:
