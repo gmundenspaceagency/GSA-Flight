@@ -252,10 +252,10 @@ except KeyboardInterrupt:
     GPIO.cleanup()
     exit()
 
-luminance1 = luminance2 = luminance3 = solar_voltage = None
+luminance1 = luminance2 = luminance3 = solar_voltage = goal_angle = None
 
 def rotation_mechanism() -> None:
-    global light1, light2n3, multiplexer, luminance1, luminance2, luminance3, solar_voltage
+    global light1, light2n3, multiplexer, luminance1, luminance2, luminance3, solar_voltage, goal_angle, motor
     
     while pi_state == "descending":            
         try:  
@@ -311,7 +311,7 @@ def rotation_mechanism() -> None:
             sleep(0.1)
 
 def main()->None:
-    global pi_state, ads1115, bme280, mpu6050, guenther, camera, multiplexer, gps, luminance1, luminance2, luminance3, solar_voltage, current_errors
+    global pi_state, ads1115, bme280, mpu6050, guenther, camera, multiplexer, gps, luminance1, luminance2, luminance3, solar_voltage, current_errors, motor, goal_angle
 
     start_time = datetime.datetime.now()
     start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -365,7 +365,7 @@ def main()->None:
 
     while pi_state == "ground_level":
         status_led.off()
-        current_errors = []
+        current_errors.clear()
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
         bme_altitude = gps_altitude = pressure = temperature = humidity = gps_lat = gps_lon = None
@@ -399,10 +399,10 @@ def main()->None:
             csv_writer = csv.writer(logfile, delimiter=";")
             data = [
                 timestamp,
-                format_num(pressure),
-                format_num(temperature),
-                format_num(humidity),
-                format_num(bme_altitude),
+                pressure,
+                temperature,
+                humidity,
+                bme_altitude,
                 "",
                 "",
                 "",
@@ -417,14 +417,14 @@ def main()->None:
                 "",
                 "",
                 "",
-                format_num(gps_lat),
-                format_num(gps_lon),
-		format_num(gps_altitude),
+                gps_lat,
+                gps_lon,
+                gps_altitude,
                 ",".join(current_errors),
                 pi_state
             ]
             
-            csv_writer.writerow(data)
+            csv_writer.writerow([format_num(value) for value in data])
 
         bme_altitude_diff = 10
         gps_altitude_diff = 10
@@ -461,7 +461,7 @@ def main()->None:
         try:
             fake_luminance_bool = False
             status_led.off()
-            current_errors = []
+            current_errors.clear()
             timestamp = round(perf_counter() * 1000 - start_perf)
             timestamps.append(timestamp)
             
@@ -605,32 +605,32 @@ def main()->None:
                 csv_writer = csv.writer(logfile, delimiter=';')
                 data = [
                     timestamp,
-                    format_num(pressure),
-                    format_num(temperature),
-                    format_num(humidity),
-                    format_num(bme_altitude),
-                    format_num(vertical_speed),
-                    format_num(vertical_acceleration),
-                    format_num(acceleration_x),
-                    format_num(acceleration_y),
-                    format_num(acceleration_z),
-                    format_num(rotationrate_x),
-                    format_num(rotationrate_y),
-                    format_num(rotationrate_z),
+                    pressure,
+                    temperature,
+                    humidity,
+                    bme_altitude,
+                    vertical_speed,
+                    vertical_acceleration,
+                    acceleration_x,
+                    acceleration_y,
+                    acceleration_z,
+                    rotationrate_x,
+                    rotationrate_y,
+                    rotationrate_z,
                     "",
                     "",
                     "",
                     "",
                     "",
                     "",
-                    format_num(gps_lat),
-                    format_num(gps_lon),
-		    format_num(gps_altitude),
-                    ','.join(current_errors),
+                    gps_lat,
+                    gps_lon,
+                    gps_altitude,
+                    ",".join(current_errors),
                     pi_state
                 ]
 
-                csv_writer.writerow(data)
+                csv_writer.writerow([format_num(value) for value in data])
 
             status_led.on()
         except Exception as error:
@@ -647,7 +647,7 @@ def main()->None:
     while pi_state == "descending":
         try:
             status_led.off()
-            current_errors = []
+            current_errors.clear()
             timestamp = round(perf_counter() * 1000 - start_perf)
             timestamps.append(timestamp)
 
@@ -726,7 +726,8 @@ def main()->None:
                 gps = initialize_gt_u7()
 
             if (
-                timestamp - start_descending_timestamp > 60000 # always descend for 1 minute
+                (MODE == "flight" and timestamp - start_descending_timestamp > 60000) # always descend for 1 minute
+                or (MODE == "modetest" and bme_altitude is not None and bme_altitude < start_bme_altitude + 10) # or reach ground again in modetest
                 or (MODE == "groundtest" and len(timestamps) > ground_duration + ascending_duration + descending_duration)
             ):
                 pi_state = "landed"
@@ -742,31 +743,32 @@ def main()->None:
                 csv_writer = csv.writer(logfile, delimiter=';')
                 data = [
                     timestamp,
-                    format_num(pressure),
-                    format_num(temperature),
-                    format_num(humidity),
-                    format_num(bme_altitude),
-                    format_num(vertical_speed),
-                    format_num(vertical_acceleration),
-                    format_num(acceleration_x),
-                    format_num(acceleration_y),
-                    format_num(acceleration_z),
-                    format_num(rotationrate_x),
-                    format_num(rotationrate_y),
-                    format_num(rotationrate_z),
-                    format_num(motor.current_angle),
-                    format_num(luminance1),
-                    format_num(luminance2),
-                    format_num(luminance3),
-                    "",
-                    "",
-                    format_num(gps_lat),
-                    format_num(gps_lon),
+                    pressure,
+                    temperature,
+                    humidity,
+                    bme_altitude,
+                    vertical_speed,
+                    vertical_acceleration,
+                    acceleration_x,
+                    acceleration_y,
+                    acceleration_z,
+                    rotationrate_x,
+                    rotationrate_y,
+                    rotationrate_z,
+                    motor.current_angle,
+                    luminance1,
+                    luminance2,
+                    luminance3,
+                    goal_angle,
+                    solar_voltage,
+                    gps_lat,
+                    gps_lon,
+                    gps_altitude,
                     ",".join(current_errors),
                     pi_state
                 ]
 
-                csv_writer.writerow(data)
+                csv_writer.writerow([format_num(value) for value in data])
                                
             status_led.on()
         except Exception as error:
@@ -781,15 +783,15 @@ def main()->None:
         try:
             camera.stop_recording()
             camera.stop_preview()
-        except (KeyError, picamera.exc.PiCameraNotRecording):
-            pass
+        except Exception as error:
+            print("Stopping of camera recording didn't work: " + str(error))
     
     while pi_state == "landed":
         status_led.off()
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
         beeper.toggle()
-        current_errors = []
+        current_errors.clear()
         gps_lat = gps_lon = gps_altitude = "X"
 
         try:
@@ -809,7 +811,7 @@ def main()->None:
                 "",
                 "",
                 "",
-                format_num(gps_altitude),
+                gps_altitude,
                 "",
                 "",
                 "",
@@ -824,13 +826,14 @@ def main()->None:
                 "",
                 "",
                 "",
-                format_num(gps_lat),
-                format_num(gps_lon),
-                "",
+                gps_lat,
+                gps_lon,
+                gps_altitude,
+                "".join(current_errors),
                 pi_state
             ]
 
-            csv_writer.writerow(data)
+            csv_writer.writerow([format_num(value) for value in data])
 
         try:
             guenther.send(f"(Info) Landed at: {gps_lat}N {gps_lon}E {gps_altitude}m")
