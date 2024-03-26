@@ -15,8 +15,8 @@ class Gt_u7:
     def get_coordinates(self):
         msg = self.read_data()
         if msg:
-            latitude = msg.latitude
-            longitude = msg.longitude
+            latitude = msg.lat
+            longitude = msg.lon
             return latitude, longitude
         else:
             return None, None
