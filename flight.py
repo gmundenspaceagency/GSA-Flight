@@ -331,7 +331,9 @@ def main()->None:
     gps_altitudes = []
     vertical_speeds = []
     vertical_accelerations = []
+    # times in milliseconds
     max_iteration_time = 1000
+    goal_iteration_time = 500
     fake_start_altitude = 266.0
     
     log_dir = f"/home/gsa202324/GSA-Flight/log/flightlog_{start_time_str}/"
@@ -462,7 +464,7 @@ def main()->None:
             guenther = initialize_guenther()
         
         status_led.on()
-        sleep(1)
+        sleep(1) # sleep longer than goal_iteration_time to save power
 
     start_recording()
     start_ascend_timestamp = round(perf_counter() * 1000 - start_perf)
@@ -640,7 +642,8 @@ def main()->None:
             print("Error in ascending loop: " + str(error))
             current_errors.append("A")
 
-        sleep(1)
+        current_iteration_duration = round(perf_counter() * 1000 - start_perf) - timestamp
+        sleep(max(0, goal_iteration_time - current_iteration_duration))
 
     rotation_thread = Thread(target=rotation_mechanism, args=())
     rotation_thread.start()
@@ -778,7 +781,8 @@ def main()->None:
             print("Error in descending loop: " + str(error))
             current_errors.append("A")
 
-        sleep(1)
+        current_iteration_duration = round(perf_counter() * 1000 - start_perf) - timestamp
+        sleep(max(0, goal_iteration_time - current_iteration_duration))
 
     print("CanSat has reached ground level")
 
