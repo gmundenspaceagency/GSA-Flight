@@ -1,6 +1,7 @@
 import serial
 import time
 import os
+import matplotlib.pyplot as plt
 from typing import Optional
 
 cansat_id = '69xd'
@@ -30,6 +31,25 @@ if is_device_connected(device_path):
             if command_response is None:
                 raise SystemError('Could not establish connection to RAK4200')
 
+            pressure_data = []
+            temperature_data = []
+            timestamps = []
+
+            plt.ion()
+            fig, axs = plt.subplots(2, 1)
+            fig.suptitle('Druck- und Temperaturdaten')
+
+            ax_pressure = axs[0]
+            ax_temperature = axs[1]
+
+            line_pressure, = ax_pressure.plot(timestamps, pressure_data, 'b-')
+            line_temperature, = ax_temperature.plot(timestamps, temperature_data, 'r-')
+
+            ax_pressure.set_ylabel('Druck (hPa)')
+            ax_temperature.set_ylabel('Temperatur (°C)')
+            ax_temperature.set_xlabel('Zeit')
+
+            plt.show()
 
             while True:
                 received_data = ser.read_until(b'\n')
@@ -50,14 +70,30 @@ if is_device_connected(device_path):
                             message_vals = message.split(';')
                             [cansat_id, timestamp, pressure, temperature] = message_vals
                             print(f'CanSat-ID: {cansat_id}, Timestamp: {timestamp}, Pressure: {pressure}hPa, Temperature: {temperature}°C')
+                            
+                            timestamps.append(timestamp)
+                            pressure_data.append(float(pressure))
+                            temperature_data.append(float(temperature))
+
+                            line_pressure.set_xdata(timestamps)
+                            line_pressure.set_ydata(pressure_data)
+                            line_temperature.set_xdata(timestamps)
+                            line_temperature.set_ydata(temperature_data)
+
+                            ax_pressure.relim()
+                            ax_pressure.autoscale_view()
+                            ax_temperature.relim()
+                            ax_temperature.autoscale_view()
+
+                            plt.draw()
+                            plt.pause(0.1)  # Pause für 0.1 Sekunden, um die Plots zu aktualisieren
+
                         else:
                             print(message)
                 except Exception as error:
-                    print(f'Error while processing message "{received_data}": {str(error)}')           
+                    print(f'Error while processing message "{received_data}": {str(error)}')
 
     except serial.SerialException as e:
         print(f"Error: {e}")
 else:
     print(f"Device not connected at {device_path}")
-
-    #ÄNDERUNG
