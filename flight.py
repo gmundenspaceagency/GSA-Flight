@@ -10,7 +10,6 @@ from typing import Optional
 from threading import Thread
 from gpiozero import LED
 from time import sleep, perf_counter
-from gps import *
 
 # pimoroni-bme280 1.0.0
 from bme280 import BME280
@@ -347,8 +346,7 @@ def main()->None:
         start_bme_altitude = fake_start_altitude
     
     try:
-        gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-        start_gps_altitude = gps.get_altitude(gpsd)
+        start_gps_altitude = gps.get_altitude()
     except Exception as error:
         try:
             #TODO: error code statt ganzes teil senden + printen
@@ -376,10 +374,8 @@ def main()->None:
         humidity = round(float(bme280.humidity) / 100, 2)
 
         try:
-            gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-            gps_lat = gps.get_lat(gpsd)
-            gps_lon = gps.get_lon(gpsd)
-            gps_altitude = gps.get_altitude(gpsd)
+            gps_lat, gps_lon = gps.get_coordinates()
+            gps_altitude = gps.get_altitude()
         except Exception as error:
             gps = initialize_gt_u7()
 
@@ -530,10 +526,8 @@ def main()->None:
             
         
         try:
-            gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-            gps_lat = gps.get_lat(gpsd)
-            gps_lon = gps.get_lon(gpsd)
-            gps_altitude = gps.get_altitude(gpsd)
+            gps_lat, gps_lon = gps.get_coordinates()
+            gps_altitude = gps.get_altitude()
         except Exception as error:
             gps = initialize_gt_u7()
         
@@ -679,10 +673,8 @@ def main()->None:
             mpu6050 = initialize_mpu6050()
 
         try:
-            gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-            gps_lat = gps.get_lat(gpsd)
-            gps_lon = gps.get_lon(gpsd)
-            gps_altitude = gps.get_altitude(gpsd)
+            gps_lat, gps_lon = gps.get_coordinates()
+            gps_altitude = gps.get_altitude()
         except Exception as error:
             gps = initialize_gt_u7()
 
