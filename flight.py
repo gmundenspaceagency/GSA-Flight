@@ -100,6 +100,7 @@ def format_num(num:float)->str:
 def cleanup()->None:
     beeper.off()
     status_led.off()
+    # TODO: motor disablen
 
 def initialize_light2n3()->Optional[Bh1750]:
     set_multiplexer_channel(6)

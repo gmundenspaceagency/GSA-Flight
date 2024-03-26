@@ -1,0 +1,24 @@
+Timestamp;Pressure (hPa);Temperature (°C);Humidity (%);Altitude (m);Speed (m/s);Relative Vertical Acceleration (m/s^2);Absolute Acceleration X (g);Absolute Acceleration Y (g);Absolute Acceleration Z (g);Rate of Rotation X (°/s);Rate of Rotation Y (°/s);Rate of Rotation Z (°/s);Motor Rotation (°);Luminance at 0° (lux);Luminance at 120° (lux);Luminance at 240° (lux);Calculated Light Angle (°);Solar Panel Voltage (V);Gps Lat (°);Gps Lon (°);Gps Altitude (m);Errors;Status
+2023;936,3;29,17;0,23;661,3;;;;;;;;;;;;;;;None;None;None;;ground_level
+3029;936,29;29,17;0,23;661,38;;;;;;;;;;;;;;;None;None;None;;ground_level
+4035;936,23;29,14;0,22;661,92;;;;;;;;;;;;;;;None;None;None;;ground_level
+5041;936,21;29,13;0,22;662,09;;;;;;;;;;;;;;;None;None;None;;ground_level
+6046;936,25;29,16;0,23;661,74;;;;;;;;;;;;;;;None;None;None;;ground_level
+7052;936,26;29,18;0,23;661,65;;;;;;;;;;;;;;;None;None;None;;ground_level
+8058;936,27;29,19;0,23;661,56;-0,09;None;0,91;0,17;-0,42;-9,7;0,87;0,17;;;;;;;None;None;None;F;ascending
+9246;936,28;29,19;0,23;661,47;-0,08;0,0;0,89;0,17;-0,45;-9,05;0,12;1,05;;;;;;;None;None;None;F;ascending
+10334;936,29;29,2;0,23;661,38;-0,08;0,0;0,9;0,18;-0,46;-9,95;0,46;0,22;;;;;;;None;None;None;F;ascending
+11422;936,3;29,2;0,23;661,3;-0,07;0,0;0,89;0,18;-0,46;-9,77;0,22;0,14;;;;;;;None;None;None;F;ascending
+12511;936,3;29,21;0,23;661,3;0,0;0,0;0,89;0,18;-0,47;-9,81;0,73;0,18;;;;;;;None;None;None;F;descending
+13600;936,3;29,2;0,23;661,3;0,0;0,0;0,9;0,18;-0,46;-9,91;0,6;0,15;0;30,0;60,0;36,6667;None;None;None;None;None;7,F;descending
+14617;936,24;29,16;0,23;661,83;0,52;0,001;0,9;0,18;-0,46;-9,77;0,57;0,02;162,0;30,0;56,6667;33,3333;169;0,589;None;None;None;7,F;descending
+15634;936,2;29,14;0,23;662,18;0,34;-0,0;0,89;0,18;-0,46;-9,78;0,59;0,13;176,40000000000003;23,3333;53,3333;30,0;172;0,589;None;None;None;7,F;descending
+16650;936,25;29,17;0,23;661,74;-0,43;-0,001;0,89;0,18;-0,45;-9,95;0,6;0,08;178,2;23,3333;50,0;30,0;168;0,589;None;None;None;7,F;descending
+17667;936,27;29,18;0,23;661,56;-0,18;0,0;0,88;0,19;-0,46;-10,31;1,37;0,06;171,0;23,3333;40,0;23,3333;170;0,589;None;None;None;7,F;landed
+18683;;;;X;;;;;;;;;;;;;;;X;X;X;;landed
+19687;;;;X;;;;;;;;;;;;;;;X;X;X;;landed
+20691;;;;X;;;;;;;;;;;;;;;X;X;X;;landed
+21695;;;;X;;;;;;;;;;;;;;;X;X;X;;landed
+22699;;;;X;;;;;;;;;;;;;;;X;X;X;;landed
+23703;;;;X;;;;;;;;;;;;;;;X;X;X;;landed
+24707;;;;X;;;;;;;;;;;;;;;X;X;X;;landed
