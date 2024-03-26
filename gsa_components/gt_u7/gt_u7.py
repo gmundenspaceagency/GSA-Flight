@@ -27,7 +27,7 @@ if __name__ == "__main__":
     while True:
         msg = gps.read_data()
         latitude, longitude = gps.get_coordinates(msg)
-        altitude = gps.get_altitude()msg
+        altitude = gps.get_altitude(msg)
 
         print(f"lon:{longitude}")
         print(f"lat:{latitude}")
