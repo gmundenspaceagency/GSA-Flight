@@ -153,6 +153,8 @@ def initialize_mpu6050()->Optional[Mpu6050]:
         current_errors.append("5")
     return mpu6050
 
+mpu6050_error = {"x": 10.136, "y": 1.657, "z": 1.225}
+
 def initialize_motor()->Optional[StepperMotor]:
     try:
         motor = StepperMotor(24, 23)
@@ -200,6 +202,7 @@ def initialize_multiplexer()->Optional[Multiplexer]:
 def initialize_gt_u7()->Optional[Gt_u7]:
     try:
         gps = Gt_u7()
+        gps.get_coordinates()
     except Exception as error:
         gps = None
         print("Problem with gps: " + str(error))
@@ -434,7 +437,7 @@ def main()->None:
             gps = initialize_gt_u7()
         
         try:
-            z_acceleration = mpu6050.get_accel_data()['z']
+            z_acceleration = mpu6050.get_accel_data()["z"]
             # using abs because cansat could be in rocket upside down
             highest_z_acceleration = max(highest_z_acceleration, abs(z_acceleration))
         except Exception as error:
@@ -550,13 +553,13 @@ def main()->None:
         
             try:
                 gyro_data = mpu6050.get_gyro_data()
-                rotationrate_x = gyro_data['x']
-                rotationrate_y = gyro_data['y']
-                rotationrate_z = gyro_data['z']
+                rotationrate_x = gyro_data["x"] - mpu6050_error["x"]
+                rotationrate_y = gyro_data["y"] - mpu6050_error["y"]
+                rotationrate_z = gyro_data["z"] - mpu6050_error["z"]
                 acceleration = mpu6050.get_accel_data()
-                acceleration_x = acceleration['x']
-                acceleration_y = acceleration['y']
-                acceleration_z = acceleration['z']
+                acceleration_x = acceleration["x"]
+                acceleration_y = acceleration["y"]
+                acceleration_z = acceleration["z"]
                 lowest_z_acceleration = min(lowest_z_acceleration, acceleration_z)
                 rotation = get_rotation(acceleration_x, acceleration_y, acceleration_z)
                 rotation_x, rotation_y = rotation
@@ -564,7 +567,7 @@ def main()->None:
                 print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
                 print(f"Static Acceleration (m/s^2): {acceleration_x}x {acceleration_y}y {acceleration_z}z")
                 print(f"Angle of rotation (°): {rotation_x}x {rotation_y}y")
-            except Exception as error:
+            except KeyboardInterrupt as error:
                 # try to contact sensor again
                 mpu6050 = initialize_mpu6050()
             
@@ -643,7 +646,7 @@ def main()->None:
                 guenther = initialize_guenther()
 
             with open(logfile_path, "a") as logfile:
-                csv_writer = csv.writer(logfile, delimiter=';')
+                csv_writer = csv.writer(logfile, delimiter=";")
                 data = [
                     timestamp,
                     pressure,
@@ -747,13 +750,13 @@ def main()->None:
         
             try:
                 gyro_data = mpu6050.get_gyro_data()
-                rotationrate_x = gyro_data['x']
-                rotationrate_y = gyro_data['y']
-                rotationrate_z = gyro_data['z']
+                rotationrate_x = gyro_data["x"]
+                rotationrate_y = gyro_data["y"]
+                rotationrate_z = gyro_data["z"]
                 acceleration = mpu6050.get_accel_data()
-                acceleration_x = acceleration['x']
-                acceleration_y = acceleration['y']
-                acceleration_z = acceleration['z']
+                acceleration_x = acceleration["x"]
+                acceleration_y = acceleration["y"]
+                acceleration_z = acceleration["z"]
                 lowest_z_acceleration = min(lowest_z_acceleration, acceleration_z)
                 rotation = get_rotation(acceleration_x, acceleration_y, acceleration_z)
                 rotation_x, rotation_y = rotation
@@ -787,7 +790,7 @@ def main()->None:
                 guenther = initialize_guenther()
             
             with open(logfile_path, "a") as logfile:
-                csv_writer = csv.writer(logfile, delimiter=';')
+                csv_writer = csv.writer(logfile, delimiter=";")
                 data = [
                     timestamp,
                     pressure,
@@ -834,7 +837,7 @@ def main()->None:
             camera.stop_recording()
             camera.stop_preview()
         except Exception as error:
-            print("Stopping of camera recording didn't work: " + str(error))
+            print("Stopping of camera recording didn"t work: " + str(error))
     
     while pi_state == "landed":
         status_led.off()
@@ -852,7 +855,7 @@ def main()->None:
             gps = initialize_gt_u7()
 
         with open(logfile_path, "a") as logfile:
-            csv_writer = csv.writer(logfile, delimiter=';')
+            csv_writer = csv.writer(logfile, delimiter=";")
             data = [
                 timestamp,
                 "",
