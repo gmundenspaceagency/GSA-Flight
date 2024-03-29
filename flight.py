@@ -14,8 +14,8 @@ from gps import *
 
 # pimoroni-bme280 1.0.0
 from bme280 import BME280
+from mpu6050 import mpu6050 as Mpu6050
 from Adafruit_ADS1x15 import ADS1115
-from gsa_components.mpu6050 import Mpu6050
 from gsa_components.multiplexer import Multiplexer
 from gsa_components.bh1750 import Bh1750
 from gsa_components.motor import StepperMotor
@@ -136,8 +136,8 @@ def initialize_bme280()->Optional[BME280]:
  
 def initialize_mpu6050()->Optional[Mpu6050]:
     try:
-        mpu6050 = Mpu6050()
-        mpu6050.get_scaled_acceleration()
+        mpu6050 = Mpu6050(0x68)
+        mpu6050.get_accel_data()
     except Exception as error:
         mpu6050 = None
         print("Problem with gyroscope: " + str(error))
@@ -373,7 +373,7 @@ def main()->None:
 
     with open(logfile_path, "a") as logfile:
         csv_writer = csv.writer(logfile, delimiter = ";")
-        csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Altitude (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (g)","Absolute Acceleration Y (g)", "Absolute Acceleration Z (g)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Gps Altitude (m)", "Errors", "Status"])
+        csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Altitude (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (m/s^2)","Absolute Acceleration Y (m/s^2)", "Absolute Acceleration Z (m/s^2)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Gps Altitude (m)", "Errors", "Status"])
     
     with open(log_dir + "info.txt", "a") as logfile:
         logfile.write(f"CanSat logdata - Team Gmunden Space Agency\nTimestamp: {start_time_str}\nMode: {MODE}\nStart altitude: {start_bme_altitude}m (BME280) {start_gps_altitude}m (GPS)")
@@ -383,7 +383,8 @@ def main()->None:
         current_errors.clear()
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
-        bme_altitude = gps_altitude = pressure = temperature = humidity = gps_lat = gps_lon = None
+        bme_altitude = gps_altitude = pressure = temperature = humidity = gps_lat = gps_lon = z_acceleration = None
+        highest_z_acceleration = 0
 
         try:
             bme280.update_sensor()
@@ -411,7 +412,9 @@ def main()->None:
             gps = initialize_gt_u7()
         
         try:
-            z_acceleration = mpu6050.get_scaled_acceleration()
+            z_acceleration = mpu6050.get_accel_data()['z']
+            # using abs because cansat could be in rocket upside down
+            highest_z_acceleration = max(highest_z_acceleration, abs(z_acceleration))
         except Exception as error:
             # try to contact sensor again
             mpu6050 = initialize_mpu6050()
@@ -428,7 +431,7 @@ def main()->None:
                 "",
                 "",
                 "",
-                "",
+                z_acceleration,
                 "",
                 "",
                 "",
@@ -449,9 +452,11 @@ def main()->None:
 
         bme_altitude_diff = 10
         gps_altitude_diff = 10
+        max_z_accleration = 150 # m/s^2 ~= 15g
         bme_ascending_check = bme_altitude > start_bme_altitude + bme_altitude_diff if bme_altitude is not None else False
         gps_ascending_check = gps_altitude > start_gps_altitude + gps_altitude_diff if gps_altitude is not None else False
-        gyro_ascending_check = False
+        # only used when other sensors are broken because it is not reliable but better than nothing
+        gyro_ascending_check = bme_altitude is None and gps_altitude is None and highest_z_acceleration >= max_z_accleration
         
         # use "or" for ascending checks, because we cant rely on all data being correct (better false start than no start)
         if (bme_ascending_check or gps_ascending_check or gyro_ascending_check) or (MODE == "groundtest" and len(timestamps) > ground_duration):
@@ -468,6 +473,7 @@ def main()->None:
 
     start_recording()
     start_ascend_timestamp = round(perf_counter() * 1000 - start_perf)
+    lowest_z_acceleration = 0
 
     while pi_state == "ascending":
         try:
@@ -502,7 +508,7 @@ def main()->None:
 
                 # speed can only be calculated after 2 height measures
                 if len(timestamps) > 1:
-                    avg_over = 5
+                    avg_over = 3
                     avg_bme_vertical_speed = round(sum(vertical_speeds[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
                     vertical_speed = round((bme_altitude - bme_altitudes[-2]) / time_difference * 1000, 2)
                     vertical_speeds.append(vertical_speed)
@@ -523,11 +529,12 @@ def main()->None:
                 rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
                 acceleration = mpu6050.get_scaled_acceleration()
                 acceleration_x, acceleration_y, acceleration_z = acceleration
+                lowest_z_acceleration = min(lowest_z_acceleration, acceleration_z)
                 rotation = mpu6050.get_rotation(*acceleration)
                 rotation_x, rotation_y = rotation
                 
                 print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
-                print(f"Static Acceleration (g): {acceleration_x}x {acceleration_y}y {acceleration_z}z")
+                print(f"Static Acceleration (m/s^2): {acceleration_x}x {acceleration_y}y {acceleration_z}z")
                 print(f"Angle of rotation (°): {rotation_x}x {rotation_y}y")
             except Exception as error:
                 # try to contact sensor again
@@ -574,8 +581,8 @@ def main()->None:
 
             gps_negative_speed_bool = gps_speed < -2 if gps_speed is not None else False
             avg_bme_vertical_speed_bool = avg_bme_vertical_speed < -2 if avg_bme_vertical_speed is not None else False
-            # normally the z-acceleration is 1g but when the cansat is falling it should go below that
-            vertical_acceleration_bool = acceleration_z < 0.7 if acceleration_z is not None else False
+            # cansat should have < 0m/s^2 static acceleration in free fall
+            vertical_acceleration_bool = lowest_z_acceleration < -10
 
             bme_works = bme_altitude is not None
             gps_works = gps_altitude is not None
@@ -590,9 +597,12 @@ def main()->None:
 
             if (
                 (
-                    timestamp - start_ascend_timestamp > 3000 # ascend must be longer than 3s
-                    and descending_speed_bool # half of working sensors indicate a descent
-                    and (highest_luminance > 1000 or all_light_sensors_broken) # the light sensors are outside (> 1000 lux) or dont work
+                    (
+                        timestamp - start_ascend_timestamp > 3000 # ascend must be longer than 3s
+                        and descending_speed_bool # half of working sensors indicate a descent
+                        # TODO: do we need this luminance check?
+                        and (highest_luminance > 1000 or all_light_sensors_broken) # the light sensors are outside (> 1000 lux) or dont work
+                    )
                     or (timestamp - start_ascend_timestamp > 7000 and MODE != "modetest") # max ascending time is 7s
                 ) 
                 or (MODE == "groundtest" and len(timestamps) > ground_duration + ascending_duration)
@@ -687,7 +697,7 @@ def main()->None:
 
                 # speed can only be calculated after 2 height measures
                 if len(timestamps) > 1:
-                    avg_over = 5
+                    avg_over = 3
 
                     avg_bme_vertical_speed = round(sum(vertical_speeds[max(-len(timestamps) + 1, -avg_over):]) / min(len(timestamps) - 1, avg_over), 2)
                     vertical_speed = round((bme_altitude - bme_altitudes[-2]) / time_difference * 1000, 2)
@@ -716,7 +726,7 @@ def main()->None:
                 rotation_x, rotation_y = rotation
                 
                 print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
-                print(f"Static Acceleration (g): {acceleration_x}x {acceleration_y}y {acceleration_z}z")
+                print(f"Static Acceleration (m/s^2): {acceleration_x}x {acceleration_y}y {acceleration_z}z")
                 print(f"Angle of rotation (°): {rotation_x}x {rotation_y}y")
             except Exception as error:
                 # try to contact sensor again
@@ -799,7 +809,7 @@ def main()->None:
         timestamps.append(timestamp)
         beeper.toggle()
         current_errors.clear()
-        gps_lat = gps_lon = gps_altitude = "X"
+        gps_lat = gps_lon = gps_altitude = None
 
         try:
             gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
@@ -810,7 +820,6 @@ def main()->None:
             # try to contact module again
             gps = initialize_gt_u7()
 
-        #TODO: add a landed mode with coordinates
         with open(logfile_path, "a") as logfile:
             csv_writer = csv.writer(logfile, delimiter=';')
             data = [
@@ -818,7 +827,7 @@ def main()->None:
                 "",
                 "",
                 "",
-                gps_altitude,
+                "",
                 "",
                 "",
                 "",
