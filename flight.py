@@ -101,10 +101,10 @@ def cleanup()->None:
     status_led.off()
     # TODO: motor disablen
 
-def dist(self, a, b):
+def dist(a, b):
     return math.sqrt((a*a)+(b*b))
 
-def get_rotation(self, x, y, z):
+def get_rotation(x, y, z):
     xradians = math.atan2(y, dist(x, z))
     xrotation = round(math.degrees(xradians), 2)
     yradians = math.atan2(x, dist(y, z))
@@ -567,7 +567,7 @@ def main()->None:
                 print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
                 print(f"Static Acceleration (m/s^2): {acceleration_x}x {acceleration_y}y {acceleration_z}z")
                 print(f"Angle of rotation (°): {rotation_x}x {rotation_y}y")
-            except KeyboardInterrupt as error:
+            except Exception as error:
                 # try to contact sensor again
                 mpu6050 = initialize_mpu6050()
             
@@ -837,7 +837,7 @@ def main()->None:
             camera.stop_recording()
             camera.stop_preview()
         except Exception as error:
-            print("Stopping of camera recording didn"t work: " + str(error))
+            print("Stopping of camera recording didn't work: " + str(error))
     
     while pi_state == "landed":
         status_led.off()

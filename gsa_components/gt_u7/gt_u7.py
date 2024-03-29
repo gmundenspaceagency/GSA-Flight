@@ -1,5 +1,6 @@
 import serial
 import pynmea2
+import gps
 
 class Gt_u7:
 
@@ -9,12 +10,13 @@ class Gt_u7:
     def read_data(self):
         while True:
             data = self.ser.readline().decode().strip()
+
             if data.startswith("$GPGGA"):
                 msg = pynmea2.parse(data)
                 return msg
 
     def get_coordinates(self):
-        msg = gps.read_data()
+        msg = self.read_data()
         if msg:
             latitude = msg.latitude
             longitude = msg.longitude
@@ -23,7 +25,7 @@ class Gt_u7:
             return None, None
 
     def get_altitude(self):
-        msg = gps.read_data()
+        msg = self.read_data()
         if msg:
             altitude = msg.altitude
             return altitude
