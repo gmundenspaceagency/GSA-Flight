@@ -3,4 +3,4 @@ picamera
 pimoroni-bme280
 Adafruit-ADS1x15
 smbus2
-
+mpu6050-raspberrypi
