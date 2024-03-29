@@ -1,5 +1,6 @@
 import os
 import csv
+import math
 import time
 import smbus
 import datetime
@@ -100,6 +101,16 @@ def cleanup()->None:
     status_led.off()
     # TODO: motor disablen
 
+def dist(self, a, b):
+    return math.sqrt((a*a)+(b*b))
+
+def get_rotation(self, x, y, z):
+    xradians = math.atan2(y, dist(x, z))
+    xrotation = round(math.degrees(xradians), 2)
+    yradians = math.atan2(x, dist(y, z))
+    yrotation = round(-math.degrees(yradians), 2)
+    return xrotation, yrotation
+
 def initialize_light2n3()->Optional[Bh1750]:
     set_multiplexer_channel(6)
    
@@ -189,6 +200,10 @@ def initialize_multiplexer()->Optional[Multiplexer]:
 def initialize_gt_u7()->Optional[Gt_u7]:
     try:
         gps = Gt_u7()
+        gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
+        gps.get_lat(gpsd)
+        gps.get_lon(gpsd)
+        gps.get_altitude(gpsd)
     except Exception as error:
         gps = None
         print("Problem with gps: " + str(error))
@@ -386,7 +401,7 @@ def main()->None:
 
     with open(logfile_path, "a") as logfile:
         csv_writer = csv.writer(logfile, delimiter = ";")
-        csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Altitude (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (m/s^2)","Absolute Acceleration Y (m/s^2)", "Absolute Acceleration Z (m/s^2)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Gps Altitude (m)", "Errors", "Status"])
+        csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Altitude (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (m/s^2)","Absolute Acceleration Y (m/s^2)", "Absolute Acceleration Z (m/s^2)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Rotation X (°)", "Rotation Y (°)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Gps Altitude (m)", "Errors", "Status"])
     
     with open(log_dir + "info.txt", "a") as logfile:
         logfile.write(f"CanSat logdata - Team Gmunden Space Agency\nTimestamp: {start_time_str}\nMode: {MODE}\nStart altitude: {start_bme_altitude}m (BME280) {start_gps_altitude}m (GPS)")
@@ -454,6 +469,8 @@ def main()->None:
                 "",
                 "",
                 "",
+                "",
+                "",
                 gps_lat,
                 gps_lon,
                 gps_altitude,
@@ -508,7 +525,7 @@ def main()->None:
                         
             pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = gps_lat = gps_lon = None
             acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = None
-            avg_bme_vertical_speed = gps_altitude = gps_speed = None
+            avg_bme_vertical_speed = gps_altitude = gps_speed = rotation_x = rotation_y = None
 
             try:
                 bme280.update_sensor()
@@ -538,12 +555,16 @@ def main()->None:
                 bme280 = initialize_bme280()
         
             try:
-                gyro_data = mpu6050.get_scaled_gyroscope()
-                rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
-                acceleration = mpu6050.get_scaled_acceleration()
-                acceleration_x, acceleration_y, acceleration_z = acceleration
+                gyro_data = mpu6050.get_gyro_data()
+                rotationrate_x = gyro_data['x']
+                rotationrate_y = gyro_data['y']
+                rotationrate_z = gyro_data['z']
+                acceleration = mpu6050.get_accel_data()
+                acceleration_x = acceleration['x']
+                acceleration_y = acceleration['y']
+                acceleration_z = acceleration['z']
                 lowest_z_acceleration = min(lowest_z_acceleration, acceleration_z)
-                rotation = mpu6050.get_rotation(*acceleration)
+                rotation = get_rotation(acceleration_x, acceleration_y, acceleration_z)
                 rotation_x, rotation_y = rotation
                 
                 print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
@@ -645,6 +666,8 @@ def main()->None:
                     rotationrate_x,
                     rotationrate_y,
                     rotationrate_z,
+                    rotation_x,
+                    rotation_y,
                     "",
                     "",
                     "",
@@ -692,7 +715,7 @@ def main()->None:
                     print(f"Warning: Single iteration took more than {max_iteration_time}ms (took {time_difference}ms)")
                     current_errors.append("F")
 
-            pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = None
+            pressure = temperature = bme_altitude = humidity = vertical_speed = vertical_acceleration = rotation_x = rotation_y = None
             acceleration_x = acceleration_y = acceleration_z = rotation_x = rotation_y = rotationrate_x = rotationrate_y = rotationrate_z = gps_lat = gps_lon = None
 
             print(f"Luminance at sensors (lux): {luminance1} {luminance2} {luminance3}")
@@ -731,11 +754,16 @@ def main()->None:
                 bme280 = initialize_bme280()
         
             try:
-                gyro_data = mpu6050.get_scaled_gyroscope()
-                rotationrate_x, rotationrate_y, rotationrate_z = gyro_data
-                acceleration = mpu6050.get_scaled_acceleration()
-                acceleration_x, acceleration_y, acceleration_z = acceleration
-                rotation = mpu6050.get_rotation(*acceleration)
+                gyro_data = mpu6050.get_gyro_data()
+                rotationrate_x = gyro_data['x']
+                rotationrate_y = gyro_data['y']
+                rotationrate_z = gyro_data['z']
+                acceleration = mpu6050.get_accel_data()
+                acceleration_x = acceleration['x']
+                acceleration_y = acceleration['y']
+                acceleration_z = acceleration['z']
+                lowest_z_acceleration = min(lowest_z_acceleration, acceleration_z)
+                rotation = get_rotation(acceleration_x, acceleration_y, acceleration_z)
                 rotation_x, rotation_y = rotation
                 
                 print(f"Rate of rotation (°/s): {rotationrate_x}x {rotationrate_y}y {rotationrate_z}z")
@@ -784,6 +812,8 @@ def main()->None:
                     rotationrate_x,
                     rotationrate_y,
                     rotationrate_z,
+                    rotation_x,
+                    rotation_y,
                     motor.current_angle,
                     luminance1,
                     luminance2,
@@ -837,6 +867,8 @@ def main()->None:
             csv_writer = csv.writer(logfile, delimiter=';')
             data = [
                 timestamp,
+                "",
+                "",
                 "",
                 "",
                 "",
