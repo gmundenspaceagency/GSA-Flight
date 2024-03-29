@@ -13,6 +13,7 @@ INFO_CODES = {
     "4": "BME280 not responding",
     "5": "Gyroscope not responding",
     "6": "Error in motor script",
+    "X": "Guenther not responding",
     "7": "Camera not responding",
     "8": "GPS Module not responding",
     "9": "Unknown error in rotation thread",

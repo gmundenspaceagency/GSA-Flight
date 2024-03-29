@@ -1,0 +1,4 @@
+3x fast (0.1s): initializing
+steady 0.5s: ready
+quick flashing: keep holding the power button
+main script: constant light with short interruptions (=runtime of each iteration)
