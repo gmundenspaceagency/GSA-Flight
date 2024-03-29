@@ -226,7 +226,7 @@ except KeyboardInterrupt:
     exit()
 try:
     pi_state = "ready"
-    print("Pi is ready, hold start button to start program")
+    print(f"Pi is ready in {MODE} mode, hold start button to start program")
 
     # wait until the second thread with the blink_status function has stopped
     while blinking:
@@ -374,6 +374,9 @@ def main()->None:
     with open(logfile_path, "a") as logfile:
         csv_writer = csv.writer(logfile, delimiter = ";")
         csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Altitude (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (g)","Absolute Acceleration Y (g)", "Absolute Acceleration Z (g)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Gps Altitude (m)", "Errors", "Status"])
+    
+    with open(log_dir + "info.txt", "a") as logfile:
+        logfile.write(f"CanSat logdata - Team Gmunden Space Agency\nTimestamp: {start_time_str}\nMode: {MODE}\nStart altitude: {start_bme_altitude}m (BME280) {start_gps_altitude}m (GPS)")
 
     while pi_state == "ground_level":
         status_led.off()
@@ -406,6 +409,12 @@ def main()->None:
                 start_gps_altitude = gps_altitude
         except Exception as error:
             gps = initialize_gt_u7()
+        
+        try:
+            z_acceleration = mpu6050.get_scaled_acceleration()
+        except Exception as error:
+            # try to contact sensor again
+            mpu6050 = initialize_mpu6050()
 
         with open(logfile_path, "a") as logfile:
             csv_writer = csv.writer(logfile, delimiter=";")
@@ -443,15 +452,6 @@ def main()->None:
         bme_ascending_check = bme_altitude > start_bme_altitude + bme_altitude_diff if bme_altitude is not None else False
         gps_ascending_check = gps_altitude > start_gps_altitude + gps_altitude_diff if gps_altitude is not None else False
         gyro_ascending_check = False
-
-        if gps_altitude is None and bme_altitude is None:
-            try:
-                z_acceleration = mpu6050.get_scaled_acceleration()
-                if z_acceleration > 5:
-                    gyro_ascending_check = True
-            except Exception as error:
-                # try to contact sensor again
-                mpu6050 = initialize_mpu6050()
         
         # use "or" for ascending checks, because we cant rely on all data being correct (better false start than no start)
         if (bme_ascending_check or gps_ascending_check or gyro_ascending_check) or (MODE == "groundtest" and len(timestamps) > ground_duration):
@@ -643,7 +643,7 @@ def main()->None:
             current_errors.append("A")
 
         current_iteration_duration = round(perf_counter() * 1000 - start_perf) - timestamp
-        sleep(max(0, goal_iteration_time - current_iteration_duration))
+        sleep(max(0, (goal_iteration_time - current_iteration_duration) / 1000))
 
     rotation_thread = Thread(target=rotation_mechanism, args=())
     rotation_thread.start()
@@ -782,7 +782,7 @@ def main()->None:
             current_errors.append("A")
 
         current_iteration_duration = round(perf_counter() * 1000 - start_perf) - timestamp
-        sleep(max(0, goal_iteration_time - current_iteration_duration))
+        sleep(max(0, (goal_iteration_time - current_iteration_duration) / 1000))
 
     print("CanSat has reached ground level")
 
@@ -886,6 +886,14 @@ try:
     # wait until power button is let go
     while GPIO.input(power_button) == GPIO.LOW:
         pass
+
+    beeper.on()
+    sleep(0.1)
+    beeper.off()
+    sleep(0.1)
+    beeper.on()
+    sleep(0.1)
+    beeper.off()
 
     main()
 
