@@ -200,10 +200,6 @@ def initialize_multiplexer()->Optional[Multiplexer]:
 def initialize_gt_u7()->Optional[Gt_u7]:
     try:
         gps = Gt_u7()
-        gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-        gps.get_lat(gpsd)
-        gps.get_lon(gpsd)
-        gps.get_altitude(gpsd)
     except Exception as error:
         gps = None
         print("Problem with gps: " + str(error))
@@ -429,10 +425,8 @@ def main()->None:
             bme280 = initialize_bme280()
 
         try:
-            gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-            gps_lat = gps.get_lat(gpsd)
-            gps_lon = gps.get_lon(gpsd)
-            gps_altitude = gps.get_altitude(gpsd)
+            gps_lat, gps_lon = gps.get_coordinates()
+            gps_altitude = gps.get_altitude()
 
             if start_gps_altitude == fake_start_altitude:
                 start_gps_altitude = gps_altitude
@@ -595,10 +589,8 @@ def main()->None:
             all_light_sensors_broken = highest_luminance == 0
                 
             try:
-                gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-                gps_lat = gps.get_lat(gpsd)
-                gps_lon = gps.get_lon(gpsd)
-                gps_altitude = gps.get_altitude(gpsd)
+                gps_lat, gps_lon = gps.get_coordinates()
+                gps_altitude = gps.get_altitude()
                 gps_altitudes.append(gps_altitude)
 
                 if gps_altitude is not None:
@@ -774,10 +766,8 @@ def main()->None:
                 mpu6050 = initialize_mpu6050()
 
             try:
-                gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-                gps_lat = gps.get_lat(gpsd)
-                gps_lon = gps.get_lon(gpsd)
-                gps_altitude = gps.get_altitude(gpsd)
+                gps_lat, gps_lon = gps.get_coordinates()
+                gps_altitude = gps.get_altitude()              
             except Exception as error:
                 # try to contact module again
                 gps = initialize_gt_u7()
@@ -855,10 +845,8 @@ def main()->None:
         gps_lat = gps_lon = gps_altitude = None
 
         try:
-            gpsd = gps(mode=WATCH_ENABLE|WATCH_NEWSTYLE)
-            gps_lat = gps.get_lat(gpsd)
-            gps_lon = gps.get_lon(gpsd)
-            gps_altitude = gps.get_altitude(gpsd)
+            gps_lat, gps_lon = gps.get_coordinates()
+            gps_altitude = gps.get_altitude()
         except Exception as error:
             # try to contact module again
             gps = initialize_gt_u7()
