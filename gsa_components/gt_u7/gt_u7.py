@@ -1,6 +1,10 @@
 import serial
 import pynmea2
+<<<<<<< HEAD
 from threading import Thread
+=======
+import gps
+>>>>>>> cc2e97f8e9fd695af2fc2349e300f03a2a823433
 
 class Gt_u7:
     def __init__(self, serial_port="/dev/ttyACM0", baudrate=9600):
@@ -13,6 +17,7 @@ class Gt_u7:
         self.thread.start()
 
     def read_data(self):
+<<<<<<< HEAD
         try:
             while not self.stop_thread:
                 data = self.ser.readline().decode().strip()
@@ -38,6 +43,31 @@ class Gt_u7:
         self.stop_thread = True
         self.ser.close()
         self.thread.join()
+=======
+        while True:
+            data = self.ser.readline().decode().strip()
+
+            if data.startswith("$GPGGA"):
+                msg = pynmea2.parse(data)
+                return msg
+
+    def get_coordinates(self):
+        msg = self.read_data()
+        if msg:
+            latitude = msg.latitude
+            longitude = msg.longitude
+            return latitude, longitude
+        else:
+            return None, None
+
+    def get_altitude(self):
+        msg = self.read_data()
+        if msg:
+            altitude = msg.altitude
+            return altitude
+        else:
+            return None
+>>>>>>> cc2e97f8e9fd695af2fc2349e300f03a2a823433
 
 if __name__ == "__main__":
     gps = Gt_u7()

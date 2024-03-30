@@ -21,6 +21,7 @@ from gsa_components.bh1750 import Bh1750
 from gsa_components.motor import StepperMotor
 from gsa_components.rak4200 import Rak4200
 from gsa_components.gt_u7 import Gt_u7
+from utils.persistent_bool import PersistentBool
 from tests import CircularPIDController
 
 """
@@ -39,7 +40,7 @@ MODE = "groundtest" # either "groundtest", "modetest" or "flight"
 # values for groundtest in seconds:
 ground_duration = 5
 ascending_duration = 5
-descending_duration = 5
+descending_duration = 600
 
 deactivate_beeping = False
 pi_state = "initializing"
@@ -101,10 +102,10 @@ def cleanup()->None:
     status_led.off()
     # TODO: motor disablen
 
-def dist(self, a, b):
+def dist(a, b):
     return math.sqrt((a*a)+(b*b))
 
-def get_rotation(self, x, y, z):
+def get_rotation(x, y, z):
     xradians = math.atan2(y, dist(x, z))
     xrotation = round(math.degrees(xradians), 2)
     yradians = math.atan2(x, dist(y, z))
@@ -153,6 +154,8 @@ def initialize_mpu6050()->Optional[Mpu6050]:
         current_errors.append("5")
     return mpu6050
 
+mpu6050_error = {"x": 10.136, "y": 1.657, "z": 1.225}
+
 def initialize_motor()->Optional[StepperMotor]:
     try:
         motor = StepperMotor(24, 23)
@@ -200,6 +203,7 @@ def initialize_multiplexer()->Optional[Multiplexer]:
 def initialize_gt_u7()->Optional[Gt_u7]:
     try:
         gps = Gt_u7()
+        gps.get_coordinates()
     except Exception as error:
         gps = None
         print("Problem with gps: " + str(error))
@@ -360,11 +364,17 @@ def main()->None:
     max_iteration_time = 1000
     goal_iteration_time = 500
     fake_start_altitude = 266.0
-    
+
+    strong_acceleration_start = None
+
+    bme_ascending_check = PersistentBool()
+    gps_ascending_check = PersistentBool()
+    gyro_ascending_check = PersistentBool()
+   
     log_dir = f"/home/gsa202324/GSA-Flight/log/flightlog_{start_time_str}/"
     os.mkdir(log_dir)
     video_output = log_dir + "flight-video.h264"
-    resolution = (1920, 1080)
+    resolution = (960, 540)
     
     def start_recording():
         if camera is not None:
@@ -434,7 +444,7 @@ def main()->None:
             gps = initialize_gt_u7()
         
         try:
-            z_acceleration = mpu6050.get_accel_data()['z']
+            z_acceleration = mpu6050.get_accel_data()["z"]
             # using abs because cansat could be in rocket upside down
             highest_z_acceleration = max(highest_z_acceleration, abs(z_acceleration))
         except Exception as error:
@@ -476,14 +486,21 @@ def main()->None:
 
         bme_altitude_diff = 10
         gps_altitude_diff = 10
-        max_z_accleration = 150 # m/s^2 ~= 15g
-        bme_ascending_check = bme_altitude > start_bme_altitude + bme_altitude_diff if bme_altitude is not None else False
-        gps_ascending_check = gps_altitude > start_gps_altitude + gps_altitude_diff if gps_altitude is not None else False
-        # only used when other sensors are broken because it is not reliable but better than nothing
-        gyro_ascending_check = bme_altitude is None and gps_altitude is None and highest_z_acceleration >= max_z_accleration
-        
+        max_z_acceleration = 150 # m/s^2 ~= 15g
+        if (bme_altitude > start_bme_altitude + bme_altitude_diff if bme_altitude is not None else False):
+            bme_ascending_check.set_true()
+        if (gps_altitude > start_gps_altitude + gps_altitude_diff if gps_altitude is not None else False):
+            gps_ascending_check.set_true()
+
+        if strong_acceleration_start is None and highest_z_acceleration >= max_z_acceleration:
+            strong_acceleration_start = timestamp
+        if strong_acceleration_start is not None and highest_z_acceleration < max_z_acceleration:
+            strong_acceleration_start = None
+        if strong_acceleration_start is not None and timestamp - strong_acceleration_start > 1500:
+            gyro_ascending_check.set_true()
+                
         # use "or" for ascending checks, because we cant rely on all data being correct (better false start than no start)
-        if (bme_ascending_check or gps_ascending_check or gyro_ascending_check) or (MODE == "groundtest" and len(timestamps) > ground_duration):
+        if (bme_ascending_check.state or gps_ascending_check.state or gyro_ascending_check.state) or (MODE == "groundtest" and len(timestamps) > ground_duration):
             pi_state = "ascending"
         
         try:
@@ -493,12 +510,20 @@ def main()->None:
             guenther = initialize_guenther()
         
         status_led.on()
+        bme_ascending_check.update()
+        gps_ascending_check.update()
+        gyro_ascending_check.update()
         sleep(1) # sleep longer than goal_iteration_time to save power
 
     start_recording()
     start_ascend_timestamp = round(perf_counter() * 1000 - start_perf)
-    lowest_z_acceleration = 0
-
+    lowest_z_acceleration = avg_highest_luminance = 0
+    highest_luminance_values = []
+    descending_speed_bool = PersistentBool()
+    gps_negative_speed_bool = PersistentBool(persist_duration=3)
+    avg_bme_vertical_speed_bool = PersistentBool(persist_duration=3)
+    above_avg_luminance_bool = PersistentBool(persist_duration=5)
+    vertical_acceleration_bool = False
     while pi_state == "ascending":
         try:
             status_led.off()
@@ -506,7 +531,8 @@ def main()->None:
             timestamp = round(perf_counter() * 1000 - start_perf)
             timestamps.append(timestamp)
             
-            if camera is not None:
+            if camera is None:
+                # try to contact sensor again
                 camera = initialize_camera()
                 start_recording()
 
@@ -550,13 +576,13 @@ def main()->None:
         
             try:
                 gyro_data = mpu6050.get_gyro_data()
-                rotationrate_x = gyro_data['x']
-                rotationrate_y = gyro_data['y']
-                rotationrate_z = gyro_data['z']
+                rotationrate_x = gyro_data["x"] - mpu6050_error["x"]
+                rotationrate_y = gyro_data["y"] - mpu6050_error["y"]
+                rotationrate_z = gyro_data["z"] - mpu6050_error["z"]
                 acceleration = mpu6050.get_accel_data()
-                acceleration_x = acceleration['x']
-                acceleration_y = acceleration['y']
-                acceleration_z = acceleration['z']
+                acceleration_x = acceleration["x"]
+                acceleration_y = acceleration["y"]
+                acceleration_z = acceleration["z"]
                 lowest_z_acceleration = min(lowest_z_acceleration, acceleration_z)
                 rotation = get_rotation(acceleration_x, acceleration_y, acceleration_z)
                 rotation_x, rotation_y = rotation
@@ -586,7 +612,14 @@ def main()->None:
                 light2n3 = initialize_light2n3()
 
             highest_luminance = max([luminance1, luminance2, luminance3])
+            highest_luminance_values.append(highest_luminance)
             all_light_sensors_broken = highest_luminance == 0
+
+            if highest_luminance_values:
+                avg_highest_luminance = sum(highest_luminance_values) / len(highest_luminance_values)
+            
+            if highest_luminance > avg_highest_luminance + 500 or all_light_sensors_broken:
+                above_avg_luminance_bool.set_true()
                 
             try:
                 gps_lat, gps_lon = gps.get_coordinates()
@@ -603,33 +636,35 @@ def main()->None:
             except Exception as error:
                 gps = initialize_gt_u7()
             
-            descending_speed_bool =  False
-
-            gps_negative_speed_bool = gps_speed < -2 if gps_speed is not None else False
-            avg_bme_vertical_speed_bool = avg_bme_vertical_speed < -2 if avg_bme_vertical_speed is not None else False
+            if (gps_speed < -2 if gps_speed is not None else False):
+                gps_negative_speed_bool.set_true()
+            if (vertical_speed < -2 if vertical_speed is not None else False):
+                avg_bme_vertical_speed_bool.set_true()
+           
             # cansat should have < 0m/s^2 static acceleration in free fall
-            vertical_acceleration_bool = lowest_z_acceleration < -10
+            if lowest_z_acceleration < -10:
+                vertical_acceleration_bool = True
+                
 
             bme_works = bme_altitude is not None
             gps_works = gps_altitude is not None
             gyro_works = acceleration_z is not None
 
             working_sensors_count = bme_works + gps_works + gyro_works
-            descending_indicators_count = gps_negative_speed_bool + avg_bme_vertical_speed_bool + vertical_acceleration_bool
+            descending_indicators_count = gps_negative_speed_bool.state + avg_bme_vertical_speed_bool.state + vertical_acceleration_bool.state
             
             # if at least half of the working sensors indicate a descent, descending mode is activated
             if descending_indicators_count >= working_sensors_count - 1:
-                descending_speed_bool = True
+                descending_speed_bool.set_true()
 
             if (
                 (
                     (
-                        timestamp - start_ascend_timestamp > 3000 # ascend must be longer than 3s
-                        and descending_speed_bool # half of working sensors indicate a descent
-                        # TODO: do we need this luminance check?
-                        and (highest_luminance > 1000 or all_light_sensors_broken) # the light sensors are outside (> 1000 lux) or dont work
+                        timestamp - start_ascend_timestamp > 1000 # ascend must be longer than 3s
+                        and descending_speed_bool.state # half of working sensors indicate a descent
+                        and above_avg_luminance_bool.state # the light sensors are above average luminance or dont work
                     )
-                    or (timestamp - start_ascend_timestamp > 7000 and MODE != "modetest") # max ascending time is 7s
+                    or (timestamp - start_ascend_timestamp > 5000 and MODE != "modetest") # max ascending time is 7s
                 ) 
                 or (MODE == "groundtest" and len(timestamps) > ground_duration + ascending_duration)
             ):
@@ -643,7 +678,7 @@ def main()->None:
                 guenther = initialize_guenther()
 
             with open(logfile_path, "a") as logfile:
-                csv_writer = csv.writer(logfile, delimiter=';')
+                csv_writer = csv.writer(logfile, delimiter=";")
                 data = [
                     timestamp,
                     pressure,
@@ -698,7 +733,7 @@ def main()->None:
             if camera is None:
                 # try to contact sensor again
                 camera = initialize_camera()
-                start_recording() 
+                start_recording()
             
             if len(timestamps) > 1:
                 time_difference = timestamp - timestamps[-2]
@@ -747,13 +782,13 @@ def main()->None:
         
             try:
                 gyro_data = mpu6050.get_gyro_data()
-                rotationrate_x = gyro_data['x']
-                rotationrate_y = gyro_data['y']
-                rotationrate_z = gyro_data['z']
+                rotationrate_x = gyro_data["x"]
+                rotationrate_y = gyro_data["y"]
+                rotationrate_z = gyro_data["z"]
                 acceleration = mpu6050.get_accel_data()
-                acceleration_x = acceleration['x']
-                acceleration_y = acceleration['y']
-                acceleration_z = acceleration['z']
+                acceleration_x = acceleration["x"]
+                acceleration_y = acceleration["y"]
+                acceleration_z = acceleration["z"]
                 lowest_z_acceleration = min(lowest_z_acceleration, acceleration_z)
                 rotation = get_rotation(acceleration_x, acceleration_y, acceleration_z)
                 rotation_x, rotation_y = rotation
@@ -787,7 +822,7 @@ def main()->None:
                 guenther = initialize_guenther()
             
             with open(logfile_path, "a") as logfile:
-                csv_writer = csv.writer(logfile, delimiter=';')
+                csv_writer = csv.writer(logfile, delimiter=";")
                 data = [
                     timestamp,
                     pressure,
@@ -833,6 +868,7 @@ def main()->None:
         try:
             camera.stop_recording()
             camera.stop_preview()
+            camera.close()
         except Exception as error:
             print("Stopping of camera recording didn't work: " + str(error))
     
@@ -852,7 +888,7 @@ def main()->None:
             gps = initialize_gt_u7()
 
         with open(logfile_path, "a") as logfile:
-            csv_writer = csv.writer(logfile, delimiter=';')
+            csv_writer = csv.writer(logfile, delimiter=";")
             data = [
                 timestamp,
                 "",

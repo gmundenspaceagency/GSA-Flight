@@ -3,10 +3,16 @@ from time import sleep
 
 sensor = mpu6050(0x68)
 sensor.set_accel_range(sensor.ACCEL_RANGE_16G)
-max_accel = 0
+i = 0
+ax = 0
+ay = 0
+az = 0
 
 while True:
-    data = sensor.get_accel_data()
-    max_accel = max(max_accel, round(data['z']/10, 2))
-    print(max_accel, *[round(val/10, 2) for val in [data['x'], data['y'], data['z']]])
+    i += 1
+    data = sensor.get_gyro_data()
+    ax = (ax * (i - 1) + data['x']) / i
+    ay = (ay * (i - 1) + data['y']) / i
+    az = (az * (i - 1) + data['z']) / i
+    print(ax, ay, az)
     sleep(0.01)
