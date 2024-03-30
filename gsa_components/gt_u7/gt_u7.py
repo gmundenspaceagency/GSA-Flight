@@ -13,7 +13,7 @@ class Gt_u7:
         self.thread.start()
 
     def read_data(self):
-        while True:
+        while not self.stop_thread:
             data = self.ser.readline().decode().strip()
             if data.startswith("$GPGGA"):
                 msg = pynmea2.parse(data)
