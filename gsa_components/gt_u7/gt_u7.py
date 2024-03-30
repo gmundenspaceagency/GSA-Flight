@@ -13,13 +13,12 @@ class Gt_u7:
         self.thread.start()
 
     def read_data(self):
-        while not self.stop_thread:
-            data = self.ser.readline().decode().strip()
-            if data.startswith("$GPGGA"):
-                msg = pynmea2.parse(data)
-                self.latitude = msg.latitude
-                self.longitude = msg.longitude
-                self.altitude = msg.altitude
+        data = self.ser.readline().decode().strip()
+        if data.startswith("$GPGGA"):
+            msg = pynmea2.parse(data)
+            self.latitude = msg.latitude
+            self.longitude = msg.longitude
+            self.altitude = msg.altitude
 
     def read_data_thread(self):
         self.read_data()
