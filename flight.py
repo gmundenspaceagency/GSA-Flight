@@ -663,7 +663,7 @@ def main()->None:
                         and descending_speed_bool.state # half of working sensors indicate a descent
                         and above_avg_luminance_bool.state # the light sensors are above average luminance or dont work
                     )
-                    or (timestamp - start_ascend_timestamp > 7000 and MODE != "modetest") # max ascending time is 7s
+                    or (timestamp - start_ascend_timestamp > 5000 and MODE != "modetest") # max ascending time is 7s
                 ) 
                 or (MODE == "groundtest" and len(timestamps) > ground_duration + ascending_duration)
             ):
