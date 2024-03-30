@@ -496,7 +496,7 @@ def main()->None:
             strong_acceleration_start = timestamp
         if strong_acceleration_start is not None and highest_z_acceleration < max_z_acceleration:
             strong_acceleration_start = None
-        if strong_acceleration_start is not None and timestamp - strong_acceleration_start > 3000:
+        if strong_acceleration_start is not None and timestamp - strong_acceleration_start > 1500:
             gyro_ascending_check.set_true()
                 
         # use "or" for ascending checks, because we cant rely on all data being correct (better false start than no start)
@@ -517,13 +517,13 @@ def main()->None:
 
     start_recording()
     start_ascend_timestamp = round(perf_counter() * 1000 - start_perf)
-    lowest_z_acceleration = avg_highest_luminance = above_avg_luminance_count = 0
+    lowest_z_acceleration = avg_highest_luminance = 0
     highest_luminance_values = []
     descending_speed_bool = PersistentBool()
     gps_negative_speed_bool = PersistentBool(persist_duration=3)
     avg_bme_vertical_speed_bool = PersistentBool(persist_duration=3)
-    vertical_acceleration_bool = PersistentBool(persist_duration=3)
-
+    above_avg_luminance_bool = PersistentBool(persist_duration=5)
+    vertical_acceleration_bool = False
     while pi_state == "ascending":
         try:
             status_led.off()
@@ -616,6 +616,9 @@ def main()->None:
 
             if highest_luminance_values:
                 avg_highest_luminance = sum(highest_luminance_values) / len(highest_luminance_values)
+            
+            if highest_luminance > avg_highest_luminance + 500 or all_light_sensors_broken:
+                above_avg_luminance_bool.set_true()
                 
             try:
                 gps_lat, gps_lon = gps.get_coordinates()
@@ -635,13 +638,12 @@ def main()->None:
 
             if (gps_speed < -2 if gps_speed is not None else False):
                 gps_negative_speed_bool.set_true()
-            if (avg_bme_vertical_speed < -2 if avg_bme_vertical_speed is not None else False):
+            if (vertical_speed < -2 if vertical_speed is not None else False):
                 avg_bme_vertical_speed_bool.set_true()
             # cansat should have < 0m/s^2 static acceleration in free fall
             if lowest_z_acceleration < -10:
-                vertical_acceleration_bool.set_true()
-            if highest_luminance > avg_highest_luminance + 500 or all_light_sensors_broken:
-                above_avg_luminance_count += 1
+                vertical_acceleration_bool = True
+                
 
             bme_works = bme_altitude is not None
             gps_works = gps_altitude is not None
@@ -657,9 +659,9 @@ def main()->None:
             if (
                 (
                     (
-                        timestamp - start_ascend_timestamp > 3000 # ascend must be longer than 3s
+                        timestamp - start_ascend_timestamp > 1000 # ascend must be longer than 3s
                         and descending_speed_bool.state # half of working sensors indicate a descent
-                        and above_avg_luminance_count >= 2 # the light sensors are above average luminance for at least 2 iteration or dont work
+                        and above_avg_luminance_bool.state # the light sensors are above average luminance or dont work
                     )
                     or (timestamp - start_ascend_timestamp > 7000 and MODE != "modetest") # max ascending time is 7s
                 ) 
