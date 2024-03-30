@@ -40,7 +40,7 @@ MODE = "groundtest" # either "groundtest", "modetest" or "flight"
 # values for groundtest in seconds:
 ground_duration = 5
 ascending_duration = 5
-descending_duration = 5
+descending_duration = 600
 
 deactivate_beeping = False
 pi_state = "initializing"
@@ -374,7 +374,7 @@ def main()->None:
     log_dir = f"/home/gsa202324/GSA-Flight/log/flightlog_{start_time_str}/"
     os.mkdir(log_dir)
     video_output = log_dir + "flight-video.h264"
-    resolution = (1920, 1080)
+    resolution = (960, 540)
     
     def start_recording():
         if camera is not None:
@@ -531,7 +531,8 @@ def main()->None:
             timestamp = round(perf_counter() * 1000 - start_perf)
             timestamps.append(timestamp)
             
-            if camera is not None:
+            if camera is None:
+                # try to contact sensor again
                 camera = initialize_camera()
                 start_recording()
 
@@ -635,11 +636,11 @@ def main()->None:
             except Exception as error:
                 gps = initialize_gt_u7()
             
-
             if (gps_speed < -2 if gps_speed is not None else False):
                 gps_negative_speed_bool.set_true()
             if (vertical_speed < -2 if vertical_speed is not None else False):
                 avg_bme_vertical_speed_bool.set_true()
+           
             # cansat should have < 0m/s^2 static acceleration in free fall
             if lowest_z_acceleration < -10:
                 vertical_acceleration_bool = True
@@ -732,7 +733,7 @@ def main()->None:
             if camera is None:
                 # try to contact sensor again
                 camera = initialize_camera()
-                start_recording() 
+                start_recording()
             
             if len(timestamps) > 1:
                 time_difference = timestamp - timestamps[-2]
@@ -867,6 +868,7 @@ def main()->None:
         try:
             camera.stop_recording()
             camera.stop_preview()
+            camera.close()
         except Exception as error:
             print("Stopping of camera recording didn't work: " + str(error))
     

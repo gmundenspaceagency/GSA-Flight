@@ -7,7 +7,7 @@ with picamera.PiCamera() as camera:
     camera.start_preview()
 
     # Start recording
-    output = '/home/gsa202324/Desktop/test.h264'
+    output = '/home/gsa202324/GSA-Flight/tests/test.h264'
     camera.start_recording(output)
 
     # Record for 10 seconds
