@@ -13,12 +13,17 @@ class Gt_u7:
         self.thread.start()
 
     def read_data(self):
-        data = self.ser.readline().decode().strip()
-        if data.startswith("$GPGGA"):
-            msg = pynmea2.parse(data)
-            self.latitude = msg.latitude
-            self.longitude = msg.longitude
-            self.altitude = msg.altitude
+        try:
+            while not self.stop_thread:
+                data = self.ser.readline().decode().strip()
+                if data.startswith("$GPGGA"):
+                    msg = pynmea2.parse(data)
+                    self.latitude = msg.latitude
+                    self.longitude = msg.longitude
+                    self.altitude = msg.altitude
+        except Exception as e:
+            print(f"Error reading GPS data: {e}")
+            self.stop()
 
     def read_data_thread(self):
         self.read_data()
@@ -31,6 +36,7 @@ class Gt_u7:
 
     def stop(self):
         self.stop_thread = True
+        self.ser.close()
         self.thread.join()
 
 if __name__ == "__main__":
