@@ -38,9 +38,9 @@ CANSAT_ID = "69xd"
 MODE = "groundtest" # either "groundtest", "modetest" or "flight"
 
 # values for groundtest in seconds:
-ground_duration = 5
-ascending_duration = 5
-descending_duration = 600
+ground_duration = 10
+ascending_duration = 10
+descending_duration = 10
 
 deactivate_beeping = False
 pi_state = "initializing"
@@ -100,6 +100,10 @@ def format_num(num:float)->str:
 def cleanup()->None:
     beeper.off()
     status_led.off()
+    if motor is not None:
+        motor.set_angle(0)
+    if gps is not None:
+        gps.stop()
     # TODO: motor disablen
 
 def dist(a, b):
@@ -398,6 +402,8 @@ def main()->None:
     
     try:
         start_gps_altitude = gps.get_altitude()
+        if start_gps_altitude is None:
+            start_gps_altitude = fake_start_altitude
     except Exception as error:
         # try to contact module again
         guenther = initialize_guenther()
@@ -438,7 +444,7 @@ def main()->None:
             gps_lat, gps_lon = gps.get_coordinates()
             gps_altitude = gps.get_altitude()
 
-            if start_gps_altitude == fake_start_altitude:
+            if start_gps_altitude == fake_start_altitude and gps_altitude is not None:
                 start_gps_altitude = gps_altitude
         except Exception as error:
             gps = initialize_gt_u7()
@@ -500,7 +506,7 @@ def main()->None:
             gyro_ascending_check.set_true()
                 
         # use "or" for ascending checks, because we cant rely on all data being correct (better false start than no start)
-        if (bme_ascending_check.state or gps_ascending_check.state or gyro_ascending_check.state) or (MODE == "groundtest" and len(timestamps) > ground_duration):
+        if (MODE != "groundtest" and (bme_ascending_check.state or gps_ascending_check.state or gyro_ascending_check.state)) or (MODE == "groundtest" and len(timestamps) > ground_duration):
             pi_state = "ascending"
         
         try:
@@ -524,6 +530,7 @@ def main()->None:
     avg_bme_vertical_speed_bool = PersistentBool(persist_duration=3)
     above_avg_luminance_bool = PersistentBool(persist_duration=5)
     vertical_acceleration_bool = False
+
     while pi_state == "ascending":
         try:
             status_led.off()
@@ -651,7 +658,7 @@ def main()->None:
             gyro_works = acceleration_z is not None
 
             working_sensors_count = bme_works + gps_works + gyro_works
-            descending_indicators_count = gps_negative_speed_bool.state + avg_bme_vertical_speed_bool.state + vertical_acceleration_bool.state
+            descending_indicators_count = gps_negative_speed_bool.state + avg_bme_vertical_speed_bool.state + vertical_acceleration_bool
             
             # if at least half of the working sensors indicate a descent, descending mode is activated
             if descending_indicators_count >= working_sensors_count - 1:
@@ -980,9 +987,6 @@ except KeyboardInterrupt:
     status_led.off()
 
 finally:
-    if motor is not None:
-        motor.set_angle(0)
-        
     cleanup()
     pi_state = "off"
     currentTime = datetime.datetime.now()
