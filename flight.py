@@ -102,9 +102,9 @@ def cleanup()->None:
     status_led.off()
     if motor is not None:
         motor.set_angle(0)
+        motor.disable()
     if gps is not None:
         gps.stop()
-    # TODO: motor disablen
 
 def dist(a, b):
     return math.sqrt((a*a)+(b*b))
@@ -413,7 +413,7 @@ def main()->None:
 
     with open(logfile_path, "a") as logfile:
         csv_writer = csv.writer(logfile, delimiter = ";")
-        csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Altitude (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (m/s^2)","Absolute Acceleration Y (m/s^2)", "Absolute Acceleration Z (m/s^2)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Rotation X (°)", "Rotation Y (°)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Gps Altitude (m)", "Errors", "Status"])
+        csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Humidity (%)", "Bme280 Altitude (m)","Speed (m/s)", "Relative Vertical Acceleration (m/s^2)", "Absolute Acceleration X (m/s^2)","Absolute Acceleration Y (m/s^2)", "Absolute Acceleration Z (m/s^2)", "Rate of Rotation X (°/s)","Rate of Rotation Y (°/s)", "Rate of Rotation Z (°/s)", "Rotation X (°)", "Rotation Y (°)", "Motor Rotation (°)","Luminance at 0° (lux)", "Luminance at 120° (lux)", "Luminance at 240° (lux)","Calculated Light Angle (°)", "Solar Panel Voltage (V)", "Gps Lat (°)", "Gps Lon (°)","Gps Altitude (m)", "Errors", "Status"])
     
     with open(log_dir + "info.txt", "a") as logfile:
         logfile.write(f"CanSat logdata - Team Gmunden Space Agency\nTimestamp: {start_time_str}\nMode: {MODE}\nStart altitude: {start_bme_altitude}m (BME280) {start_gps_altitude}m (GPS)")
@@ -424,7 +424,6 @@ def main()->None:
         timestamp = round(perf_counter() * 1000 - start_perf)
         timestamps.append(timestamp)
         bme_altitude = gps_altitude = pressure = temperature = humidity = gps_lat = gps_lon = z_acceleration = None
-        highest_z_acceleration = 0
 
         try:
             bme280.update_sensor()
@@ -451,8 +450,6 @@ def main()->None:
         
         try:
             z_acceleration = mpu6050.get_accel_data()["z"]
-            # using abs because cansat could be in rocket upside down
-            highest_z_acceleration = max(highest_z_acceleration, abs(z_acceleration))
         except Exception as error:
             # try to contact sensor again
             mpu6050 = initialize_mpu6050()
@@ -490,19 +487,23 @@ def main()->None:
             
             csv_writer.writerow([format_num(value) for value in data])
 
-        bme_altitude_diff = 10
-        gps_altitude_diff = 10
-        max_z_acceleration = 150 # m/s^2 ~= 15g
+        # high value because changing weather conditions and changing satellites can result in varying heights
+        bme_altitude_diff = 50
+        gps_altitude_diff = 50
+
+        # accelerating CanSat by hand reaches a maximum of 30m/s^2
+        max_z_acceleration = 40 # m/s^2 ~= 4g
+
         if (bme_altitude > start_bme_altitude + bme_altitude_diff if bme_altitude is not None else False):
             bme_ascending_check.set_true()
         if (gps_altitude > start_gps_altitude + gps_altitude_diff if gps_altitude is not None else False):
             gps_ascending_check.set_true()
 
-        if strong_acceleration_start is None and highest_z_acceleration >= max_z_acceleration:
+        if strong_acceleration_start is None and abs(z_acceleration) >= max_z_acceleration:
             strong_acceleration_start = timestamp
-        if strong_acceleration_start is not None and highest_z_acceleration < max_z_acceleration:
+        if strong_acceleration_start is not None and abs(z_acceleration) < max_z_acceleration:
             strong_acceleration_start = None
-        if strong_acceleration_start is not None and timestamp - strong_acceleration_start > 1500:
+        if strong_acceleration_start is not None and timestamp - strong_acceleration_start > 1400: 
             gyro_ascending_check.set_true()
                 
         # use "or" for ascending checks, because we cant rely on all data being correct (better false start than no start)
@@ -651,7 +652,6 @@ def main()->None:
             # cansat should have < 0m/s^2 static acceleration in free fall
             if lowest_z_acceleration < -10:
                 vertical_acceleration_bool = True
-                
 
             bme_works = bme_altitude is not None
             gps_works = gps_altitude is not None
@@ -667,11 +667,11 @@ def main()->None:
             if (
                 (
                     (
-                        timestamp - start_ascend_timestamp > 1000 # ascend must be longer than 3s
+                        timestamp - start_ascend_timestamp > 1000 # ascend must be longer than 1s
                         and descending_speed_bool.state # half of working sensors indicate a descent
                         and above_avg_luminance_bool.state # the light sensors are above average luminance or dont work
                     )
-                    or (timestamp - start_ascend_timestamp > 5000 and MODE != "modetest") # max ascending time is 7s
+                    or (timestamp - start_ascend_timestamp > 5000 and MODE != "modetest") # max ascending time is 5s
                 ) 
                 or (MODE == "groundtest" and len(timestamps) > ground_duration + ascending_duration)
             ):
@@ -727,6 +727,8 @@ def main()->None:
 
     rotation_thread = Thread(target=rotation_mechanism, args=())
     rotation_thread.start()
+    if motor is not None:
+        motor.enable()
     print("CanSat has started falling")
     start_descending_timestamp = round(perf_counter() * 1000 - start_perf)
 
