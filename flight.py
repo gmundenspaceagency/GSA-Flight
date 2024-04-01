@@ -872,6 +872,7 @@ def main()->None:
         sleep(max(0, (goal_iteration_time - current_iteration_duration) / 1000))
 
     print("CanSat has reached ground level")
+    motor.disable()
 
     if camera is not None:
         try:

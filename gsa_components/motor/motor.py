@@ -12,7 +12,7 @@ class StepperMotor:
 
         self.step_pin = step_pin
         self.dir_pin = dir_pin
-        self.disable_pin = enable_pin
+        self.disable_pin = disable_pin
         self.step_count = step_count if step_count != 0 else 200  # Default to 200 if step_count is 0
         self.step_delay = step_delay
         self.current_angle = 0  # Track current angle (0-360 degrees)
@@ -56,3 +56,11 @@ class StepperMotor:
 
     def cleanup(self):
         GPIO.cleanup()
+
+if __name__ == "__main__":
+    motor = StepperMotor(24, 23)
+    motor.disable()
+
+    while True:
+        motor.move_angle(90)
+        time.sleep(1)
