@@ -86,7 +86,7 @@ if is_device_connected(device_path):
                             ax_temperature.autoscale_view()
 
                             plt.draw()
-                            plt.pause(0.1)  # Pause für 0.1 Sekunden, um die Plots zu aktualisieren
+                            plt.pause(0.1)
 
                         else:
                             print(message)
