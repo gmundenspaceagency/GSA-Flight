@@ -35,12 +35,12 @@ Allgemeine ToDos:
 """
 
 CANSAT_ID = "69xd"
-MODE = "groundtest" # either "groundtest", "modetest" or "flight"
+MODE = "flight" # either "groundtest", "modetest" or "flight"
 
 # values for groundtest in seconds:
 ground_duration = 10
 ascending_duration = 10
-descending_duration = 10000
+descending_duration = 20
 
 deactivate_beeping = False
 pi_state = "initializing"
