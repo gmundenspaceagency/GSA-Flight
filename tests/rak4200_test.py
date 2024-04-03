@@ -16,7 +16,7 @@ Parameters:
     - preamble_length (int): Preamble length. Range: 5 to 65535. Default is 8.
     - tx_power (int): Transmit power in dBm. Range: 5 to 20. Default is 20.
 """
-parameters = (860.525, 7, 0, 4, 64, 20)
+parameters = (869.525, 7, 0, 4, 64, 20)
 
 send_timeout = 0.5 # only for sending
 
@@ -76,7 +76,7 @@ if mode == 'send':
     index = 1
 
     while True:
-        filler = ''.join(['a'] * 10)
+        filler = ''.join(['a'] * 100)
         message = f'{index};{filler}'
         rak.send(message)
         print(f'Sent message {index}')

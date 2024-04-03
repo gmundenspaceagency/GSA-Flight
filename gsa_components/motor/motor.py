@@ -3,17 +3,26 @@ import time
 
 class StepperMotor:
 
-    def __init__(self, step_pin:int, dir_pin:int, step_count:int=200, step_delay:float=0.001):
+    def __init__(self, step_pin:int, dir_pin:int, step_count:int=200, step_delay:float=0.001, disable_pin:int=9):
         # Set up GPIO pins
         GPIO.setmode(GPIO.BCM)  # Use BCM pin numbering
         GPIO.setup(step_pin, GPIO.OUT)
         GPIO.setup(dir_pin, GPIO.OUT)
+        GPIO.setup(disable_pin, GPIO.OUT)
 
         self.step_pin = step_pin
         self.dir_pin = dir_pin
+        self.disable_pin = disable_pin
         self.step_count = step_count if step_count != 0 else 200  # Default to 200 if step_count is 0
         self.step_delay = step_delay
         self.current_angle = 0  # Track current angle (0-360 degrees)
+        self.disable()
+
+    def disable(self)->None:
+        GPIO.output(self.disable_pin, 1)
+
+    def enable(self)->None:
+        GPIO.output(self.disable_pin, 0)
 
     def move_steps(self, steps):
         if steps == 0:
@@ -47,3 +56,11 @@ class StepperMotor:
 
     def cleanup(self):
         GPIO.cleanup()
+
+if __name__ == "__main__":
+    motor = StepperMotor(24, 23)
+    motor.enable()
+
+    while True:
+        motor.move_angle(90)
+        time.sleep(1)
