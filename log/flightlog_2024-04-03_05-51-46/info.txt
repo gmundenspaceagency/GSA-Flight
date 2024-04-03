@@ -1,0 +1,4 @@
+CanSat logdata - Team Gmunden Space Agency
+Timestamp: 2024-04-03_05-51-46
+Mode: groundtest
+Start altitude: 493.07m (BME280) 266.0m (GPS)

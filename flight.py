@@ -40,7 +40,7 @@ MODE = "groundtest" # either "groundtest", "modetest" or "flight"
 # values for groundtest in seconds:
 ground_duration = 10
 ascending_duration = 10
-descending_duration = 10
+descending_duration = 10000
 
 deactivate_beeping = False
 pi_state = "initializing"
@@ -266,21 +266,20 @@ def rotation_mechanism() -> None:
             # TODO: test this code when one, two and three sensors dont work
             luminances = [luminance1, luminance2, luminance3]
             # TODO: check if the value 1000 works on a rainy day
-            valid_luminances = [lum for lum in luminances if lum is not None and lum >= 1000]
+            luminance_min_val = -10
+            valid_luminances = [lum for lum in luminances if lum is not None and lum >= luminance_min_val]
             total_luminance = sum(valid_luminances)
 
             if len(valid_luminances) == 2:
                 diff = last_total_luminance - total_luminance
                 for i in range(len(luminances)):
-                    if luminances[i] is None or luminances[i] < 1000:
+                    if luminances[i] is None or luminances[i] < luminance_min_val:
                         luminances[i] = diff
                         break
             
             last_total_luminance = sum(luminances)
             
-            # TODO: do we still need this if statement and why is the luminance list set again?
-            if luminance1 is not None and luminance2 is not None and luminance3 is not None:
-                luminances = [luminance1, luminance3, luminance2]
+            if len(valid_luminances) > 1:
                 angle_fraction = 360 / len(luminances)
                 highest = max(luminances)
                 index = luminances.index(highest)
@@ -298,7 +297,7 @@ def rotation_mechanism() -> None:
                 pidController = CircularPIDController(0.3,0,0,360)
                 calculatedAngle = pidController.calculate(goal_angle, motor.current_angle)
                 motor.move_angle(calculatedAngle)
-                print(calculatedAngle, goal_angle)
+                #print(calculatedAngle, goal_angle)
             
             try:
                 ads1115_value = ads1115.read_adc(0, gain=1)
