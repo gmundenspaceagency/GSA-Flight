@@ -638,7 +638,11 @@ def main()->None:
                 or (MODE == "groundtest" and len(timestamps) > ground_duration + ascending_duration)
             ):
                 pi_state = "descending"
-              
+            
+            above_avg_luminance_bool.update()
+            gps_negative_speed_bool.update()
+            avg_bme_vertical_speed_bool.update()
+            
             try:
                 error_string = "".join(current_errors)
                 guenther.send(f"{CANSAT_ID};{timestamp};{pressure};{temperature};{error_string};C") # C for ascending
@@ -899,29 +903,6 @@ def main()->None:
             guenther = initialize_guenther()
         
         status_led.on()
-
-        # check for turn off
-        if GPIO.input(power_button) == GPIO.LOW:
-            pi_state = "shutting down"
-            
-            while blinking:
-                pass
-            
-            # fast flashing telling pi is about to shut down
-            Thread(target=blink_status, args=([0.05], "shutting down")).start()
-            sleep(1)
-
-            if GPIO.input(power_button) == GPIO.LOW:
-                print("Program switched off with power button")
-                status_led.on()
-                exit()
-            else:
-                pi_state = "landed"
-
-                while blinking:
-                    pass 
-
-                status_led.on()
         sleep(1)
 
 try:
