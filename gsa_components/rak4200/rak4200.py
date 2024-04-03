@@ -53,6 +53,7 @@ class Rak4200:
 
     def sendAtCMD(self:any, at_cmd:str)->Optional[str]:
         self.uart0.write((at_cmd + '\r\n').encode())
+        time.sleep(1)
         dataString = self.uart0.readline().decode('utf-8', errors='replace')
         return dataString if dataString != '' else None
     
@@ -115,7 +116,7 @@ class Rak4200:
     def start(self:any, mode:str)->None:
         self.set_mode(mode)
         self.wake_up()
-        self.set_p2p_config(869.55, 7, 0, 4, 64, 20)
+        self.set_p2p_config(869.525, 7, 0, 4, 64, 20)
         currentTime = datetime.now()
         currentTimeStr = currentTime.strftime('%H:%M:%S')
 

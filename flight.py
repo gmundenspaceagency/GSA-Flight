@@ -241,43 +241,6 @@ except KeyboardInterrupt:
     pi_state = "off"
     cleanup()
     exit()
-try:
-    pi_state = "ready"
-    print(f"Pi is ready in {MODE} mode, hold start button to start program")
-
-    # wait until the second thread with the blink_status function has stopped
-    while blinking:
-        pass
-
-    # blinking to show the pi is ready
-    Thread(target=blink_status, args=([0.5], "ready")).start()
-
-    # wait for 1s button press
-    while True:
-        if GPIO.input(power_button) == GPIO.LOW:
-            pi_state = "starting"
-
-            while blinking:
-                pass
-
-            # fast flashing telling you should keep holding the button
-            Thread(target=blink_status, args=([0.05], "starting")).start()
-            sleep(1)
-
-            if GPIO.input(power_button) == GPIO.LOW:
-                break
-            else:
-                pi_state = "ready"
-
-                while blinking:
-                    pass
-
-                Thread(target=blink_status, args=([0.5], "ready")).start()
-except KeyboardInterrupt:
-    print("Program stopped in ready state by keyboard interrupt")
-    pi_state = "off"
-    cleanup()
-    exit()
 
 luminance1 = luminance2 = luminance3 = solar_voltage = goal_angle = None
 
@@ -970,11 +933,6 @@ try:
         pass
 
     status_led.on()
-
-    # wait until power button is let go
-    while GPIO.input(power_button) == GPIO.LOW:
-        pass
-
     beeper.on()
     sleep(0.1)
     beeper.off()

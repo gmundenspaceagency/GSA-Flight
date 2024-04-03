@@ -59,7 +59,7 @@ class StepperMotor:
 
 if __name__ == "__main__":
     motor = StepperMotor(24, 23)
-    motor.disable()
+    motor.enable()
 
     while True:
         motor.move_angle(90)
