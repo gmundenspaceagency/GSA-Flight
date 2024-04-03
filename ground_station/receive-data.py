@@ -1,98 +1,66 @@
-import serial
-import time
+from time import sleep
 import os
-import matplotlib.pyplot as plt
-from typing import Optional
+import csv
+import datetime
+from ..gsa_components.rak4200 import Rak4200
 
-cansat_id = '69xd'
+try:
+    rak = Rak4200(serial_port='/dev/ttyS0')
+    rak.start('receive')
+except Exception as error:
+    rak.sleep()
+    raise Exception('Error while starting RAK: ' + str(error))
 
-def is_device_connected(device_path):
-    return os.path.exists(device_path)
+start_time = datetime.datetime.now()
+start_time_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
+log_dir = f"/home/gsa202324/GSA-Flight/ground_station/log/groundlog_{start_time_str}/"
+os.mkdir(log_dir)
+logfile_path = log_dir + "datalog.csv"
+infofile_path = log_dir + "info.txt"
 
-def send_command(serial_port, command):
-    serial_port.write(command.encode('utf-8'))
-    time.sleep(1)  # Wait for the command to be processed
+with open(logfile_path, "a") as logfile:
+    csv_writer = csv.writer(logfile, delimiter = ";")
+    csv_writer.writerow(["Timestamp", "Pressure (hPa)", "Temperature (°C)", "Errors", "Mode", "Signal Strength", "Noise", "Message Length"])
 
-def sendCmdAT(uart:serial.Serial, at_cmd:str, wait:int=1)->Optional[str]:
-    uart.write((at_cmd + '\r\n').encode())
-    time.sleep(1)
-    dataString = uart.readline().decode('utf-8', errors='replace')
-
-    return dataString if dataString != '' else None
-
-device_path = '/dev/ttyUSB0'
-
-if is_device_connected(device_path):
+responses = [{
+        'signal_strength': 10,
+        'noise': 20,
+        'message_length': 100,
+        'message': '69xd;10029;press;temp;errr;mod',
+    }] * 10 + [{
+        '(Info) lolololol'
+    }] * 10
+i = 0
+while True:
+    i += 1
     try:
-        with serial.Serial(device_path, 115200, timeout=None) as ser:
-            print(f"Connected to {device_path}")
+        response = responses[i]
+        
+        try:
+            if response is not None:
+                strength = response['signal_strength']
+                noise = response['noise']
+                length = response['message_length']
+                print('------------------ Received message with signal strength {strength}, noise {noise} and length {length} ------------------')
+                message = response['message']
 
-            command_response = sendCmdAT(ser, 'at+set_config=lorap2p:transfer_mode:1')
-            if command_response is None:
-                raise SystemError('Could not establish connection to RAK4200')
+                if not '(Info)' in message:
+                    message_vals = message.split(';')
+                    [cansat_id, timestamp, pressure, temperature, error_string, mode] = message_vals
+                    print(f'CanSat-ID: {cansat_id}, Timestamp: {timestamp}, Pressure: {pressure}hPa, Temperature: {temperature}°C, errors:{error_string}, {mode}')
+                    csv_writer.writerow([timestamp, pressure, temperature, error_string, mode, strength, noise, length])
+                else:
+                    print(message)
+                    with open(infofile_path, "a") as logfile:
+                        logfile.write(message + '\n')
+                
+        except Exception as error:
+            print(f'Error while processing data {response}: ' + str(error))
 
-            pressure_data = []
-            temperature_data = []
-            timestamps = []
-
-            plt.ion()
-            fig, axs = plt.subplots(2, 1)
-            fig.suptitle('Druck- und Temperaturdaten')
-
-            ax_pressure = axs[0]
-            ax_temperature = axs[1]
-
-            line_pressure, = ax_pressure.plot(timestamps, pressure_data, 'b-')
-            line_temperature, = ax_temperature.plot(timestamps, temperature_data, 'r-')
-
-            ax_pressure.set_ylabel('Druck (hPa)')
-            ax_temperature.set_ylabel('Temperatur (°C)')
-            ax_temperature.set_xlabel('Zeit')
-
-            plt.show()
-
-            while True:
-                received_data = ser.read_until(b'\n')
-
-                try:
-                    if received_data != b'':
-                        decoded_data = received_data.decode('utf-8')
-                        data_str = decoded_data.split('=')[1]
-                        data_vals = data_str.split(',')
-                        signal_strength = data_vals[0]
-                        noise = data_vals[1]
-                        message_info = data_vals[2].split(':')
-                        message_length = message_info[0]
-                        message_hex = message_info[1]
-                        message = bytes.fromhex(message_hex).decode('utf-8')
-
-                        if not '(Info)' in message:
-                            message_vals = message.split(';')
-                            [cansat_id, timestamp, pressure, temperature, error_string, mode] = message_vals
-                            print(f'CanSat-ID: {cansat_id}, Timestamp: {timestamp}, Pressure: {pressure}hPa, Temperature: {temperature}°C, errors:{error_string}, {mode}')
-                               
-                            timestamps.append(timestamp)
-                            pressure_data.append(float(pressure))
-                            temperature_data.append(float(temperature))
-
-                            line_pressure.set_xdata(timestamps)
-                            line_pressure.set_ydata(pressure_data)
-                            line_temperature.set_xdata(timestamps)
-                            line_temperature.set_ydata(temperature_data)
-
-                            ax_pressure.relim()
-                            ax_pressure.autoscale_view()
-                            ax_temperature.relim()
-                            ax_temperature.autoscale_view()
-
-                            plt.draw()
-                            plt.pause(0.1)
-                        else:
-                            print(message)
-                except Exception as error:
-                    print(f'Error while processing message "{received_data}": {str(error)}')           
-
-    except serial.SerialException as e:
-        print(f"Error: {e}")
-else:
-    print(f"Device not connected at {device_path}")
+    except KeyboardInterrupt:
+        print('Program stopped by keyboard interrupt')
+        rak.sleep()
+        exit()  
+    
+    except Exception as error:
+        print('Error while receiving data: ' + str(error))
