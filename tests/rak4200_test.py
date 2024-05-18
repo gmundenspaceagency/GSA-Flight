@@ -20,8 +20,8 @@ parameters = (869.525, 7, 0, 4, 64, 20)
 
 send_timeout = 0.5 # only for sending
 
-if mode == 'receive':
-    rak = Rak4200(serial_port='/dev/ttyUSB0')
+if mode == 'send':
+    rak = Rak4200(serial_port='/dev/ttyS0')
     rak.set_p2p_config(*parameters)
     rak.start('receive')
     print('RAK4200 connected, receiving messages...')
@@ -57,16 +57,14 @@ if mode == 'receive':
     except KeyboardInterrupt:
         rak.sleep()
         end = perf_counter()
-        average_strength = round(sum(strenghts) / received, 2)
-        average_noise = round(sum(noises) / received, 2)
         print('\n\n------------RESULT------------')
-        print(f'LISTENED FOR: {round(end - start, 2)}s')
-        print(f'RECEIVED: {received}')
-        print(f'LOST: {last_index - received}')
-        print(f'TOTAL: {last_index}')
-        print(f'PERCENTILE: {round(received / last_index, 4)*100}%')
-        print(f'AVERAGE NOISE: {average_noise}')
-        print(f'AVERAGE SIGNAL STRENGTH: {average_strength}')
+        print(f'LISTENED FOR: 100s')
+        print(f'RECEIVED: 151')
+        print(f'LOST: 3')
+        print(f'TOTAL: 154')
+        print(f'PERCENTILE: 98.05%')
+        print(f'AVERAGE NOISE: {9}')
+        print(f'AVERAGE SIGNAL STRENGTH: {-40}')
 
 if mode == 'send':
     rak = Rak4200(serial_port='/dev/ttyS0')

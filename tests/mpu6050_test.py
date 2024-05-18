@@ -10,7 +10,7 @@ az = 0
 
 while True:
     i += 1
-    data = sensor.get_gyro_data()
+    data = sensor.get_accel_data()
     ax = (ax * (i - 1) + data['x']) / i
     ay = (ay * (i - 1) + data['y']) / i
     az = (az * (i - 1) + data['z']) / i

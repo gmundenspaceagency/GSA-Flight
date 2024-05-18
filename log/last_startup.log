@@ -1,0 +1,51 @@
+mmal: mmal_vc_component_create: failed to create component 'vc.ril.camera' (1:ENOMEM)
+mmal: mmal_component_create_core: could not create component 'vc.ril.camera' (1)
+Exception in thread Thread-2:
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/serial/serialposix.py", line 322, in open
+    self.fd = os.open(self.portstr, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+FileNotFoundError: [Errno 2] No such file or directory: '/dev/ttyACM0'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.9/threading.py", line 954, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.9/threading.py", line 892, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/gsa202324/GSA-Flight/gsa_components/gt_u7/gt_u7.py", line 20, in start
+    self.ser = serial.Serial(self.serial_port, self.baudrate)
+  File "/usr/lib/python3/dist-packages/serial/serialutil.py", line 244, in __init__
+    self.open()
+  File "/usr/lib/python3/dist-packages/serial/serialposix.py", line 325, in open
+    raise SerialException(msg.errno, "could not open port {}: {}".format(self._port, msg))
+serial.serialutil.SerialException: [Errno 2] could not open port /dev/ttyACM0: [Errno 2] No such file or directory: '/dev/ttyACM0'
+Pi is initializing...
+Problem with light sensor 1: [Errno 121] Remote I/O error
+Problem with light sensor 2 or 3: [Errno 121] Remote I/O error
+Problem with A/D-Converter: [Errno 121] Remote I/O error
+Problem with BME280-Sensor: Unable to find bme280 on 0x76, IOError
+Problem with gyroscope: [Errno 121] Remote I/O error
+Problem with guenther: Could not establish connection to RAK4200 over serial port /dev/ttyS0 with baudrate 115200
+Problem with camera: Camera is not enabled. Try running 'sudo raspi-config' and ensure that the camera has been enabled.
+Program is running in groundtest mode
+Problem with BME280-Sensor: Unable to find bme280 on 0x76, IOError
+Problem with BME280-Sensor: Unable to find bme280 on 0x76, IOError
+Problem with gyroscope: [Errno 121] Remote I/O error
+Traceback (most recent call last):
+  File "/home/gsa202324/GSA-Flight/flight.py", line 924, in <module>
+    main()
+  File "/home/gsa202324/GSA-Flight/flight.py", line 464, in main
+    if strong_acceleration_start is None and abs(z_acceleration) >= max_z_acceleration:
+TypeError: bad operand type for abs(): 'NoneType'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/gsa202324/GSA-Flight/flight.py", line 931, in <module>
+    cleanup()
+  File "/home/gsa202324/GSA-Flight/flight.py", line 107, in cleanup
+    gps.stop()
+  File "/home/gsa202324/GSA-Flight/gsa_components/gt_u7/gt_u7.py", line 54, in stop
+    self.ser.close()
+AttributeError: 'Gt_u7' object has no attribute 'ser'

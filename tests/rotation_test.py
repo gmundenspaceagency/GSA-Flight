@@ -1,11 +1,14 @@
-from ..gsa_components.motor import StepperMotor
-from ..gsa_components.bh1750 import Bh1750
-from ..gsa_components.multiplexer import Multiplexer
+import sys
+sys.path.append('..')
+sys.path.append('.')
+from old_motor import Motor
+from gsa_components.bh1750 import Bh1750
+from gsa_components.multiplexer import Multiplexer
 from time import sleep
 from typing import Optional
-from tests import CircularPIDController
+from pid import CircularPIDController
 
-motor = StepperMotor(24, 23)
+motor = Motor()
 last_total_luminance = 80000
 
 # initialize sensors
@@ -75,29 +78,28 @@ while True:
                     luminances[i] = diff
                     break
         
-        last_total_luminance = sum(luminances)
+        last_total_luminance = sum(luminances) 
+    
+        angle_fraction = 360 / len(luminances)
+        highest = max(luminances)
+        index = luminances.index(highest)
+        right = luminances[index + 1] if index + 1 < len(luminances) else luminances[0]
+        left = luminances[index - 1] if index > 0 else luminances[-1]
         
-        # TODO: do we still need this if statement and why is the luminance list set again?
-        if luminance1 is not None and luminance2 is not None and luminance3 is not None:
-            luminances = [luminance1, luminance3, luminance2]
-            angle_fraction = 360 / len(luminances)
-            highest = max(luminances)
-            index = luminances.index(highest)
-            right = luminances[index + 1] if index + 1 < len(luminances) else luminances[0]
-            left = luminances[index - 1] if index > 0 else luminances[-1]
-            
-            if right > left:
-                goal_angle = round(index / (len(luminances) - 1) * (360 - angle_fraction) + angle_fraction * right / max(highest, 1))
-            else:
-                goal_angle = round(index / (len(luminances) - 1) * (360 - angle_fraction) - angle_fraction * left / max(highest, 1))
-            
-            if goal_angle < 0:
-                goal_angle += 360
-            
-            pidController = CircularPIDController(0.3,0,0,360)
-            calculatedAngle = pidController.calculate(goal_angle, motor.current_angle)
-            motor.move_angle(calculatedAngle)
-            print(calculatedAngle, goal_angle)
+        if right > left:
+            goal_angle = round(index / (len(luminances) - 1) * (360 - angle_fraction) + angle_fraction * right / max(highest, 1))
+        else:
+            goal_angle = round(index / (len(luminances) - 1) * (360 - angle_fraction) - angle_fraction * left / max(highest, 1))
+        
+        if goal_angle < 0:
+            goal_angle += 360
+        
+       # pidController = CircularPIDController(0.3,0,0,360)
+        #calculatedAngle = pidController.calculate(goal_angle, motor.angle)
+        #motor.move_angle(calculatedAngle)
+        #print(calculatedAngle, goal_angle)
+        motor.set_angle(goal_angle)
+        print(goal_angle, motor.angle)
 
     except Exception as error:
         print("Error in rotation mechanism: " + str(error))
