@@ -174,7 +174,7 @@ if __name__ == '__main__':
     test_mode = 'send'
 
     if test_mode == 'receive':
-        test = Rak4200(serial_port='/dev/ttyUSB0')
+        test = Rak4200(serial_port='/dev/ttyS0')
         test.start('receive')
         print('RAK4200 connected, receiving messages...')
 
